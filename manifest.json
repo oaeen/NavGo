@@ -3,6 +3,11 @@
   "name": "NavGo",
   "version": "1.0.0",
   "description": "简洁美观的新标签页，快速访问常用网站",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": ["storage"],
   "host_permissions": [
     "https://www.google.com/*",
