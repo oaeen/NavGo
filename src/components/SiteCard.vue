@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const iconError = ref(false)
 const showMenu = ref(false)
+const menuPosition = ref({ x: 0, y: 0 })
 
 const iconUrl = computed(() => {
   if (props.site.icon) {
@@ -35,6 +36,7 @@ function handleIconError() {
 
 function handleContextMenu(e: MouseEvent) {
   e.preventDefault()
+  menuPosition.value = { x: e.clientX, y: e.clientY }
   showMenu.value = true
 }
 
@@ -74,18 +76,10 @@ function closeMenu() {
     </div>
     <span class="site-name">{{ site.name }}</span>
 
-    <!-- 编辑按钮 -->
-    <button class="edit-btn" @click.prevent.stop="handleEdit" title="编辑">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-      </svg>
-    </button>
-
     <!-- 右键菜单 -->
     <Teleport to="body">
       <div v-if="showMenu" class="menu-overlay" @click="closeMenu">
-        <div class="context-menu" @click.stop>
+        <div class="context-menu" :style="{ left: menuPosition.x + 'px', top: menuPosition.y + 'px' }" @click.stop>
           <button class="menu-item" @click="handleEdit">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -161,32 +155,6 @@ function closeMenu() {
   text-align: center;
 }
 
-.edit-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.site-card:hover .edit-btn {
-  opacity: 1;
-}
-
-.edit-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
 .menu-overlay {
   position: fixed;
   top: 0;
@@ -194,13 +162,10 @@ function closeMenu() {
   right: 0;
   bottom: 0;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
 }
 
 .context-menu {
+  position: fixed;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);

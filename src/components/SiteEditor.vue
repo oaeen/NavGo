@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Site } from '@/types'
-import { getFaviconUrl, fetchFaviconAsBase64 } from '@/utils/favicon'
+import { getFaviconUrl, fetchFaviconAsBase64, fetchSiteTitleViaBackground, fetchHighResIconViaBackground } from '@/utils/favicon'
 import { compressImage } from '@/utils/image'
 
 const props = defineProps<{
@@ -65,12 +65,21 @@ async function fetchIcon() {
   isFetchingIcon.value = true
   try {
     const normalizedUrl = normalizeUrl(url.value)
-    const base64 = await fetchFaviconAsBase64(normalizedUrl)
-    if (base64) {
-      icon.value = base64
+    const domain = new URL(normalizedUrl).hostname
+
+    // 优先使用高清图标服务
+    let iconBase64 = await fetchHighResIconViaBackground(domain)
+
+    // 备选：Google Favicon
+    if (!iconBase64) {
+      iconBase64 = await fetchFaviconAsBase64(normalizedUrl)
     }
-  } catch (e) {
-    console.error('Failed to fetch favicon:', e)
+
+    if (iconBase64) {
+      icon.value = iconBase64
+    }
+  } catch {
+    // 获取失败
   } finally {
     isFetchingIcon.value = false
   }
@@ -83,49 +92,52 @@ async function fetchIcon() {
 async function fetchSiteInfo() {
   if (!url.value) return
 
-  // 如果已经是编辑模式且有数据，不自动获取
+  // 如果已经是编辑模式且 URL 未变，不自动获取
   if (props.site && props.site.url === normalizeUrl(url.value)) return
 
   const normalizedUrl = normalizeUrl(url.value)
   isFetchingInfo.value = true
 
-  console.log('[NavGo] Fetching site info for:', normalizedUrl)
+  try {
+    const urlObj = new URL(normalizedUrl)
+    const domain = urlObj.hostname
 
-  // 先获取图标（更可靠）
-  if (!icon.value) {
-    await fetchIcon()
+    // 并行获取标题和图标
+    const [title, iconBase64] = await Promise.all([
+      // 获取标题
+      name.value ? Promise.resolve(null) : fetchSiteTitleViaBackground(normalizedUrl),
+      // 获取高清图标（优先使用 Clearbit/icon.horse）
+      icon.value ? Promise.resolve(null) : fetchHighResIconViaBackground(domain)
+    ])
+
+    // 设置标题
+    if (!name.value && title) {
+      const textarea = document.createElement('textarea')
+      textarea.innerHTML = title
+      name.value = textarea.value
+    }
+
+    // 设置图标
+    if (!icon.value && iconBase64) {
+      icon.value = iconBase64
+    }
+
+    // 如果高清图标获取失败，使用备选方案
+    if (!icon.value) {
+      const fallbackIcon = await fetchFaviconAsBase64(normalizedUrl)
+      if (fallbackIcon) {
+        icon.value = fallbackIcon
+      }
+    }
+  } catch {
+    // 获取失败
   }
 
-  // 尝试获取标题
+  // 回退：使用域名作为名称
   if (!name.value) {
     try {
-      // 通过 CORS 代理获取网页内容
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(normalizedUrl)}`
-      console.log('[NavGo] Fetching title via proxy:', proxyUrl)
-      const response = await fetch(proxyUrl)
-      const data = await response.json()
-
-      if (data.contents) {
-        // 解析标题
-        const titleMatch = data.contents.match(/<title[^>]*>([^<]+)<\/title>/i)
-        if (titleMatch && titleMatch[1]) {
-          const fetchedTitle = titleMatch[1].trim()
-          // 解码 HTML 实体
-          const textarea = document.createElement('textarea')
-          textarea.innerHTML = fetchedTitle
-          name.value = textarea.value
-          console.log('[NavGo] Title fetched:', name.value)
-        }
-      }
-    } catch (e) {
-      console.warn('[NavGo] Failed to fetch site title:', e)
-      // 标题获取失败时，使用域名作为备用名称
-      try {
-        const hostname = new URL(normalizedUrl).hostname.replace('www.', '')
-        name.value = hostname
-        console.log('[NavGo] Using hostname as fallback name:', hostname)
-      } catch {}
-    }
+      name.value = new URL(normalizedUrl).hostname.replace('www.', '')
+    } catch {}
   }
 
   isFetchingInfo.value = false
@@ -183,48 +195,19 @@ function handleClose() {
         </div>
 
         <div class="modal-body">
-          <!-- 图标预览和编辑 -->
-          <div class="icon-section">
-            <div class="icon-preview">
-              <img v-if="previewIcon" :src="previewIcon" alt="图标预览" />
-              <div v-else class="icon-placeholder">?</div>
-            </div>
-            <div class="icon-actions">
-              <button
-                class="icon-btn"
-                :disabled="!url || isFetchingIcon"
-                @click="fetchIcon"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  :class="{ spinning: isFetchingIcon }"
-                >
-                  <polyline points="23 4 23 10 17 10" />
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                </svg>
-                自动获取
-              </button>
-              <label class="icon-btn upload">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                上传图片
-                <input type="file" accept="image/*" hidden @change="handleFileUpload" />
-              </label>
-              <button v-if="icon" class="icon-btn clear" @click="clearIcon">
-                清除
-              </button>
-            </div>
+          <!-- 网址字段 - 放在最上面 -->
+          <div class="form-field">
+            <label>网址</label>
+            <input
+              v-model="url"
+              type="text"
+              placeholder="https://example.com"
+              @blur="fetchSiteInfo"
+            />
+            <span v-if="isFetchingInfo" class="fetching-hint">正在获取网站信息...</span>
           </div>
 
-          <!-- 表单字段 -->
+          <!-- 名称字段 -->
           <div class="form-field">
             <label>名称</label>
             <input
@@ -235,15 +218,48 @@ function handleClose() {
             />
           </div>
 
-          <div class="form-field">
-            <label>网址</label>
-            <input
-              v-model="url"
-              type="text"
-              placeholder="https://example.com"
-              @blur="fetchSiteInfo"
-            />
-            <span v-if="isFetchingInfo" class="fetching-hint">正在获取网站信息...</span>
+          <!-- 图标区域：三列布局 -->
+          <div class="icon-section">
+            <label class="icon-label">网站图标</label>
+            <div class="icon-row">
+              <div class="icon-preview">
+                <img v-if="previewIcon" :src="previewIcon" alt="图标预览" />
+                <div v-else class="icon-placeholder">?</div>
+              </div>
+              <div class="icon-actions">
+                <button
+                  class="icon-btn"
+                  :disabled="!url || isFetchingIcon"
+                  @click="fetchIcon"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    :class="{ spinning: isFetchingIcon }"
+                  >
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                  </svg>
+                  自动获取
+                </button>
+                <label class="icon-btn upload">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  上传图片
+                  <input type="file" accept="image/*" hidden @change="handleFileUpload" />
+                </label>
+                <button v-if="icon" class="icon-btn clear" @click="clearIcon">
+                  清除
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -316,10 +332,20 @@ function handleClose() {
 }
 
 .icon-section {
+  margin-bottom: 16px;
+}
+
+.icon-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #666;
+}
+
+.icon-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
 }
 
 .icon-preview {

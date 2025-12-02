@@ -1,11 +1,57 @@
+// 检测是否在扩展环境
+function isExtensionEnv(): boolean {
+  return typeof chrome !== 'undefined' && !!chrome.runtime?.sendMessage
+}
+
 /**
- * 获取网站的 Favicon URL
- * 优先使用 Google 的 Favicon 服务
+ * 通过 background script 获取网站标题
+ */
+export async function fetchSiteTitleViaBackground(url: string): Promise<string | null> {
+  if (!isExtensionEnv()) return null
+
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ type: 'FETCH_SITE_INFO', url }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(null)
+          return
+        }
+        resolve(response?.title || null)
+      })
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+/**
+ * 通过 background script 获取高清图标
+ * 使用 Clearbit/icon.horse 等专业图标服务
+ */
+export async function fetchHighResIconViaBackground(domain: string): Promise<string | null> {
+  if (!isExtensionEnv()) return null
+
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ type: 'FETCH_HIGH_RES_ICON', domain }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(null)
+          return
+        }
+        resolve(response)
+      })
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+/**
+ * 获取网站 Favicon URL（用于预览）
  */
 export function getFaviconUrl(url: string, size: number = 128): string {
   try {
     const domain = new URL(url).hostname
-    // Google Favicon 服务 - 最可靠，默认 128px 高清
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`
   } catch {
     return ''
@@ -13,64 +59,22 @@ export function getFaviconUrl(url: string, size: number = 128): string {
 }
 
 /**
- * 备用 Favicon 服务
- */
-export function getAlternativeFaviconUrl(url: string): string {
-  try {
-    const domain = new URL(url).hostname
-    return `https://icons.duckduckgo.com/ip3/${domain}.ico`
-  } catch {
-    return ''
-  }
-}
-
-/**
- * 尝试获取高清 Favicon 并转为 Base64
- * 从大到小尝试多个尺寸，返回最高清的有效图标
+ * 备选方案：通过 Google Favicon 服务获取图标
  */
 export async function fetchFaviconAsBase64(url: string): Promise<string | null> {
-  // 从大到小尝试多个尺寸
-  const sizes = [256, 128, 64, 32]
+  const faviconUrl = getFaviconUrl(url, 128)
+  if (!faviconUrl) return null
 
-  for (const size of sizes) {
-    const faviconUrl = getFaviconUrl(url, size)
-    if (!faviconUrl) continue
-
-    try {
-      console.log(`[NavGo] Fetching favicon: ${faviconUrl}`)
-      const response = await fetch(faviconUrl, { mode: 'cors' })
-      if (!response.ok) {
-        console.log(`[NavGo] Favicon fetch failed with status: ${response.status}`)
-        continue
-      }
-
-      const blob = await response.blob()
-      console.log(`[NavGo] Favicon blob size: ${blob.size}`)
-      // 检查图片是否足够大（大于 100 字节通常是有效图片）
-      if (blob.size > 100) {
-        const base64 = await blobToBase64(blob)
-        console.log(`[NavGo] Favicon converted to base64, length: ${base64.length}`)
-        return base64
-      }
-    } catch (e) {
-      console.warn(`[NavGo] Failed to fetch favicon at size ${size}:`, e)
-      continue
-    }
-  }
-
-  // 尝试备用服务
   try {
-    const altUrl = getAlternativeFaviconUrl(url)
-    console.log(`[NavGo] Trying alternative favicon: ${altUrl}`)
-    const response = await fetch(altUrl, { mode: 'cors' })
+    const response = await fetch(faviconUrl, { mode: 'cors' })
     if (!response.ok) return null
 
     const blob = await response.blob()
     if (blob.size > 100) {
       return await blobToBase64(blob)
     }
-  } catch (e) {
-    console.warn('[NavGo] Alternative favicon also failed:', e)
+  } catch {
+    // 获取失败
   }
 
   return null

@@ -3,6 +3,9 @@
   "name": "NavGo",
   "version": "1.0.0",
   "description": "简洁美观的新标签页，快速访问常用网站",
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

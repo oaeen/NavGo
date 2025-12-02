@@ -23,9 +23,6 @@ const editingSite = ref<Site | null>(null)
 // 设置面板状态
 const showSettings = ref(false)
 
-// 确认删除状态
-const showDeleteConfirm = ref(false)
-const deletingSite = ref<Site | null>(null)
 
 async function loadData() {
   isLoading.value = true
@@ -53,27 +50,13 @@ function handleEditSite(site: Site) {
   showEditor.value = true
 }
 
-function handleDeleteSite(site: Site) {
-  deletingSite.value = site
-  showDeleteConfirm.value = true
-}
-
-async function confirmDelete() {
-  if (deletingSite.value) {
-    sites.value = sites.value.filter(s => s.id !== deletingSite.value!.id)
-    // 重新排序
-    sites.value.forEach((site, i) => {
-      site.order = i
-    })
-    await setSites(sites.value)
-  }
-  deletingSite.value = null
-  showDeleteConfirm.value = false
-}
-
-function cancelDelete() {
-  deletingSite.value = null
-  showDeleteConfirm.value = false
+async function handleDeleteSite(site: Site) {
+  sites.value = sites.value.filter(s => s.id !== site.id)
+  // 重新排序
+  sites.value.forEach((s, i) => {
+    s.order = i
+  })
+  await setSites(sites.value)
 }
 
 async function handleSaveSite(siteData: { id?: string; name: string; url: string; icon: string | null }) {
@@ -186,19 +169,6 @@ onMounted(() => {
       @import="handleImport"
     />
 
-    <!-- 删除确认对话框 -->
-    <Teleport to="body">
-      <div v-if="showDeleteConfirm" class="confirm-overlay" @click="cancelDelete">
-        <div class="confirm-dialog" @click.stop>
-          <h4>确认删除</h4>
-          <p>确定要删除 "{{ deletingSite?.name }}" 吗？</p>
-          <div class="confirm-actions">
-            <button class="btn cancel" @click="cancelDelete">取消</button>
-            <button class="btn danger" @click="confirmDelete">删除</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
@@ -241,70 +211,4 @@ onMounted(() => {
   padding: 20px;
 }
 
-/* 确认对话框 */
-.confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.confirm-dialog {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  min-width: 300px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.confirm-dialog h4 {
-  margin: 0 0 12px;
-  font-size: 18px;
-  color: #333;
-}
-
-.confirm-dialog p {
-  margin: 0 0 20px;
-  color: #666;
-}
-
-.confirm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn.cancel {
-  border: 1px solid #ddd;
-  background: #fff;
-  color: #666;
-}
-
-.btn.cancel:hover {
-  background: #f5f5f5;
-}
-
-.btn.danger {
-  border: none;
-  background: #e53935;
-  color: #fff;
-}
-
-.btn.danger:hover {
-  background: #c62828;
-}
 </style>
