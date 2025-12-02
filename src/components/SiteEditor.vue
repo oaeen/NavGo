@@ -18,6 +18,7 @@ const name = ref('')
 const url = ref('')
 const icon = ref<string | null>(null)
 const isFetchingIcon = ref(false)
+const isFetchingInfo = ref(false)
 
 const isEdit = computed(() => !!props.site)
 const title = computed(() => isEdit.value ? '编辑网站' : '添加网站')
@@ -73,6 +74,61 @@ async function fetchIcon() {
   } finally {
     isFetchingIcon.value = false
   }
+}
+
+/**
+ * 自动获取网站信息（标题和图标）
+ * 当用户输入 URL 并失去焦点时触发
+ */
+async function fetchSiteInfo() {
+  if (!url.value) return
+
+  // 如果已经是编辑模式且有数据，不自动获取
+  if (props.site && props.site.url === normalizeUrl(url.value)) return
+
+  const normalizedUrl = normalizeUrl(url.value)
+  isFetchingInfo.value = true
+
+  console.log('[NavGo] Fetching site info for:', normalizedUrl)
+
+  // 先获取图标（更可靠）
+  if (!icon.value) {
+    await fetchIcon()
+  }
+
+  // 尝试获取标题
+  if (!name.value) {
+    try {
+      // 通过 CORS 代理获取网页内容
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(normalizedUrl)}`
+      console.log('[NavGo] Fetching title via proxy:', proxyUrl)
+      const response = await fetch(proxyUrl)
+      const data = await response.json()
+
+      if (data.contents) {
+        // 解析标题
+        const titleMatch = data.contents.match(/<title[^>]*>([^<]+)<\/title>/i)
+        if (titleMatch && titleMatch[1]) {
+          const fetchedTitle = titleMatch[1].trim()
+          // 解码 HTML 实体
+          const textarea = document.createElement('textarea')
+          textarea.innerHTML = fetchedTitle
+          name.value = textarea.value
+          console.log('[NavGo] Title fetched:', name.value)
+        }
+      }
+    } catch (e) {
+      console.warn('[NavGo] Failed to fetch site title:', e)
+      // 标题获取失败时，使用域名作为备用名称
+      try {
+        const hostname = new URL(normalizedUrl).hostname.replace('www.', '')
+        name.value = hostname
+        console.log('[NavGo] Using hostname as fallback name:', hostname)
+      } catch {}
+    }
+  }
+
+  isFetchingInfo.value = false
 }
 
 async function handleFileUpload(e: Event) {
@@ -185,7 +241,9 @@ function handleClose() {
               v-model="url"
               type="text"
               placeholder="https://example.com"
+              @blur="fetchSiteInfo"
             />
+            <span v-if="isFetchingInfo" class="fetching-hint">正在获取网站信息...</span>
           </div>
         </div>
 
@@ -363,6 +421,13 @@ function handleClose() {
 .form-field input:focus {
   outline: none;
   border-color: #4a90d9;
+}
+
+.fetching-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #4a90d9;
 }
 
 .modal-footer {

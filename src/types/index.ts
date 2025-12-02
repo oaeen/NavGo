@@ -17,10 +17,25 @@ export interface StorageData {
   version: string
 }
 
+// 导出数据中的网站配置（icon 为文件路径而非 Base64）
+export interface ExportSite {
+  id: string
+  name: string
+  url: string
+  icon: string | null  // 导出时为路径如 "icons/xxx.png"
+  order: number
+}
+
+// 导出数据中的应用配置（wallpaper 为文件路径而非 Base64）
+export interface ExportConfig {
+  wallpaper: string | null  // 导出时为路径如 "wallpaper.jpg"
+  searchEngine: 'google' | 'baidu' | 'bing'
+}
+
 export interface ExportData {
   version: string
-  config: AppConfig
-  sites: Omit<Site, 'icon'>[]
+  config: ExportConfig
+  sites: ExportSite[]
 }
 
 export const DEFAULT_CONFIG: AppConfig = {

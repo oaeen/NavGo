@@ -2,10 +2,10 @@
  * 获取网站的 Favicon URL
  * 优先使用 Google 的 Favicon 服务
  */
-export function getFaviconUrl(url: string, size: number = 64): string {
+export function getFaviconUrl(url: string, size: number = 128): string {
   try {
     const domain = new URL(url).hostname
-    // Google Favicon 服务 - 最可靠
+    // Google Favicon 服务 - 最可靠，默认 128px 高清
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`
   } catch {
     return ''
@@ -25,31 +25,55 @@ export function getAlternativeFaviconUrl(url: string): string {
 }
 
 /**
- * 尝试获取 Favicon 并转为 Base64
+ * 尝试获取高清 Favicon 并转为 Base64
+ * 从大到小尝试多个尺寸，返回最高清的有效图标
  */
 export async function fetchFaviconAsBase64(url: string): Promise<string | null> {
-  const faviconUrl = getFaviconUrl(url)
-  if (!faviconUrl) return null
+  // 从大到小尝试多个尺寸
+  const sizes = [256, 128, 64, 32]
 
+  for (const size of sizes) {
+    const faviconUrl = getFaviconUrl(url, size)
+    if (!faviconUrl) continue
+
+    try {
+      console.log(`[NavGo] Fetching favicon: ${faviconUrl}`)
+      const response = await fetch(faviconUrl, { mode: 'cors' })
+      if (!response.ok) {
+        console.log(`[NavGo] Favicon fetch failed with status: ${response.status}`)
+        continue
+      }
+
+      const blob = await response.blob()
+      console.log(`[NavGo] Favicon blob size: ${blob.size}`)
+      // 检查图片是否足够大（大于 100 字节通常是有效图片）
+      if (blob.size > 100) {
+        const base64 = await blobToBase64(blob)
+        console.log(`[NavGo] Favicon converted to base64, length: ${base64.length}`)
+        return base64
+      }
+    } catch (e) {
+      console.warn(`[NavGo] Failed to fetch favicon at size ${size}:`, e)
+      continue
+    }
+  }
+
+  // 尝试备用服务
   try {
-    const response = await fetch(faviconUrl)
+    const altUrl = getAlternativeFaviconUrl(url)
+    console.log(`[NavGo] Trying alternative favicon: ${altUrl}`)
+    const response = await fetch(altUrl, { mode: 'cors' })
     if (!response.ok) return null
 
     const blob = await response.blob()
-    return await blobToBase64(blob)
-  } catch {
-    // 尝试备用服务
-    try {
-      const altUrl = getAlternativeFaviconUrl(url)
-      const response = await fetch(altUrl)
-      if (!response.ok) return null
-
-      const blob = await response.blob()
+    if (blob.size > 100) {
       return await blobToBase64(blob)
-    } catch {
-      return null
     }
+  } catch (e) {
+    console.warn('[NavGo] Alternative favicon also failed:', e)
   }
+
+  return null
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

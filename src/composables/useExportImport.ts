@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import type { Site, AppConfig, ExportData } from '@/types'
+import type { Site, AppConfig, ExportData, ExportSite, ExportConfig } from '@/types'
 import { base64ToBlob, getImageExtension } from '@/utils/image'
 
 const EXPORT_VERSION = '1.0.0'
@@ -18,53 +18,53 @@ export async function exportToZip(
   config: AppConfig
 ): Promise<Blob> {
   const zip = new JSZip()
-
-  // 准备配置数据（不含 Base64 图标）
-  const exportConfig: ExportData = {
-    version: EXPORT_VERSION,
-    config: {
-      ...config,
-      wallpaper: config.wallpaper ? 'wallpaper.jpg' : null
-    },
-    sites: sites.map(site => ({
-      id: site.id,
-      name: site.name,
-      url: site.url,
-      order: site.order
-    }))
-  }
-
-  // 添加配置文件
-  zip.file('config.json', JSON.stringify(exportConfig, null, 2))
-
-  // 创建图标文件夹
   const iconsFolder = zip.folder('icons')
 
+  // 正确初始化 exportSites，包含 icon 字段
+  const exportSites: ExportSite[] = sites.map(site => ({
+    id: site.id,
+    name: site.name,
+    url: site.url,
+    icon: null,  // 初始化为 null，后面更新为路径
+    order: site.order
+  }))
+
   // 导出网站图标
-  for (const site of sites) {
-    if (site.icon && site.icon.startsWith('data:')) {
+  for (let i = 0; i < sites.length; i++) {
+    const site = sites[i]
+    const exportSite = exportSites[i]
+    if (site && exportSite && site.icon && site.icon.startsWith('data:')) {
       const ext = getImageExtension(site.icon)
       const blob = base64ToBlob(site.icon)
+      const iconPath = `icons/${site.id}.${ext}`
       iconsFolder?.file(`${site.id}.${ext}`, blob)
-
-      // 更新配置中的图标路径
-      const siteInConfig = exportConfig.sites.find(s => s.id === site.id)
-      if (siteInConfig) {
-        (siteInConfig as Site).icon = `icons/${site.id}.${ext}`
-      }
+      exportSite.icon = iconPath  // 更新为路径
     }
   }
 
   // 导出壁纸
+  let wallpaperPath: string | null = null
   if (config.wallpaper && config.wallpaper.startsWith('data:')) {
     const ext = getImageExtension(config.wallpaper)
     const blob = base64ToBlob(config.wallpaper)
-    zip.file(`wallpaper.${ext}`, blob)
-    exportConfig.config.wallpaper = `wallpaper.${ext}`
+    wallpaperPath = `wallpaper.${ext}`
+    zip.file(wallpaperPath, blob)
   }
 
-  // 更新配置文件（包含正确的路径）
-  zip.file('config.json', JSON.stringify(exportConfig, null, 2))
+  // 创建导出配置
+  const exportConfig: ExportConfig = {
+    wallpaper: wallpaperPath,
+    searchEngine: config.searchEngine
+  }
+
+  // 创建配置文件
+  const exportData: ExportData = {
+    version: EXPORT_VERSION,
+    config: exportConfig,
+    sites: exportSites
+  }
+
+  zip.file('config.json', JSON.stringify(exportData, null, 2))
 
   return await zip.generateAsync({ type: 'blob' })
 }
@@ -88,14 +88,16 @@ export async function importFromZip(file: File): Promise<FullExportData> {
   const sites: Site[] = []
   for (const site of exportData.sites) {
     const siteWithIcon: Site = {
-      ...site,
+      id: site.id,
+      name: site.name,
+      url: site.url,
+      order: site.order,
       icon: null
     }
 
-    // 检查是否有图标文件
-    const iconPath = (site as Site).icon
-    if (iconPath && typeof iconPath === 'string') {
-      const iconFile = zip.file(iconPath)
+    // 检查是否有图标文件（ExportSite.icon 现在是路径）
+    if (site.icon && typeof site.icon === 'string') {
+      const iconFile = zip.file(site.icon)
       if (iconFile) {
         const iconBlob = await iconFile.async('blob')
         siteWithIcon.icon = await blobToBase64(iconBlob)
