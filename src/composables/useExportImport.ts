@@ -54,7 +54,9 @@ export async function exportToZip(
   // 创建导出配置
   const exportConfig: ExportConfig = {
     wallpaper: wallpaperPath,
-    searchEngine: config.searchEngine
+    searchEngine: config.searchEngine,
+    showAddButton: config.showAddButton,
+    iconSize: config.iconSize
   }
 
   // 创建配置文件
@@ -156,33 +158,107 @@ export async function importFromJson(file: File): Promise<FullExportData> {
 }
 
 /**
- * 从 GitHub 链接导入
+ * 解析 GitHub 输入（用户名或完整 URL）
  */
-export async function importFromGitHub(url: string): Promise<FullExportData> {
-  // 转换为 raw 链接
-  let rawUrl = url
-  if (url.includes('github.com') && url.includes('/blob/')) {
-    rawUrl = url
-      .replace('github.com', 'raw.githubusercontent.com')
-      .replace('/blob/', '/')
+function parseGitHubInput(input: string): { owner: string; repo: string } {
+  input = input.trim()
+
+  // 完整 URL (https://github.com/user/repo)
+  if (input.includes('github.com')) {
+    const match = input.match(/github\.com\/([^\/]+)\/([^\/\?#]+)/)
+    if (match && match[1] && match[2]) {
+      return { owner: match[1], repo: match[2].replace(/\.git$/, '') }
+    }
+    throw new Error('无效的 GitHub URL')
   }
 
-  const response = await fetch(rawUrl)
+  // 只有用户名，使用默认仓库名 NavGoConf
+  return { owner: input, repo: 'NavGoConf' }
+}
+
+/**
+ * 构建 GitHub Raw URL
+ */
+function buildRawUrl(owner: string, repo: string, branch: string, path: string): string {
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`
+}
+
+/**
+ * 从 GitHub 仓库导入配置
+ * 支持输入用户名（使用默认仓库 NavGoConf）或完整 URL
+ */
+export async function importFromGitHub(input: string): Promise<FullExportData> {
+  const { owner, repo } = parseGitHubInput(input)
+
+  // 尝试 main 分支，失败则尝试 master
+  let branch = 'main'
+  let configUrl = buildRawUrl(owner, repo, branch, 'config.json')
+  let response = await fetch(configUrl)
+
   if (!response.ok) {
-    throw new Error('无法获取配置文件')
+    branch = 'master'
+    configUrl = buildRawUrl(owner, repo, branch, 'config.json')
+    response = await fetch(configUrl)
+
+    if (!response.ok) {
+      throw new Error('无法找到配置文件，请确认仓库存在且包含 config.json')
+    }
   }
 
-  const contentType = response.headers.get('content-type') || ''
+  const exportData = await response.json() as ExportData
 
-  if (contentType.includes('application/zip') || rawUrl.endsWith('.zip')) {
-    const blob = await response.blob()
-    const file = new File([blob], 'config.zip', { type: 'application/zip' })
-    return importFromZip(file)
+  // 并行获取所有图标
+  const sites: Site[] = []
+  const iconPromises: Promise<void>[] = []
+
+  for (const site of exportData.sites) {
+    const siteWithIcon: Site = {
+      id: site.id,
+      name: site.name,
+      url: site.url,
+      order: site.order,
+      icon: null
+    }
+    sites.push(siteWithIcon)
+
+    if (site.icon && typeof site.icon === 'string') {
+      const iconUrl = buildRawUrl(owner, repo, branch, site.icon)
+      iconPromises.push(
+        fetch(iconUrl)
+          .then(res => res.ok ? res.blob() : null)
+          .then(blob => blob ? blobToBase64(blob) : null)
+          .then(base64 => { siteWithIcon.icon = base64 })
+          .catch(() => {})
+      )
+    }
   }
 
-  const text = await response.text()
+  // 获取壁纸
+  let wallpaper: string | null = null
+  if (exportData.config.wallpaper && typeof exportData.config.wallpaper === 'string') {
+    const wallpaperUrl = buildRawUrl(owner, repo, branch, exportData.config.wallpaper)
+    try {
+      const wallpaperResponse = await fetch(wallpaperUrl)
+      if (wallpaperResponse.ok) {
+        const blob = await wallpaperResponse.blob()
+        wallpaper = await blobToBase64(blob)
+      }
+    } catch {}
+  }
 
-  return importFromJson(new File([text], 'config.json', { type: 'application/json' }))
+  // 等待所有图标加载完成
+  await Promise.all(iconPromises)
+
+  return {
+    version: exportData.version,
+    config: {
+      searchEngine: exportData.config.searchEngine,
+      showAddButton: exportData.config.showAddButton ?? true,
+      iconSize: exportData.config.iconSize ?? 'medium',
+      wallpaper
+    },
+    sites
+  }
 }
 
 /**

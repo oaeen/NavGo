@@ -12,13 +12,6 @@ function isExtensionEnv(): boolean {
     && typeof chrome.storage.local !== 'undefined'
 }
 
-// 验证配置对象是否有效
-function isValidConfig(config: unknown): config is AppConfig {
-  if (!config || typeof config !== 'object') return false
-  const c = config as Record<string, unknown>
-  return ['google', 'baidu', 'bing'].includes(c.searchEngine as string)
-}
-
 export function useStorage() {
   const isLoading = ref(true)
   const error = ref<string | null>(null)
@@ -44,9 +37,11 @@ export function useStorage() {
           ? Object.values(data.sites) as Site[]
           : []
 
+        const config = { ...DEFAULT_CONFIG, ...data.config as AppConfig }
+
         return {
           sites,
-          config: isValidConfig(data.config) ? data.config as AppConfig : { ...DEFAULT_CONFIG },
+          config,
           version: typeof data.version === 'string' ? data.version : CURRENT_VERSION
         }
       }

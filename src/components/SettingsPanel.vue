@@ -22,6 +22,8 @@ const emit = defineEmits<{
   changeWallpaper: [file: File]
   clearWallpaper: []
   import: [data: { sites: Site[]; config: AppConfig }]
+  'update:showAddButton': [value: boolean]
+  'update:iconSize': [value: 'small' | 'medium' | 'large']
 }>()
 
 const activeTab = ref<'general' | 'data'>('general')
@@ -160,6 +162,49 @@ function handleClose() {
               </div>
             </div>
 
+            <!-- 显示添加按钮 -->
+            <div class="setting-item">
+              <label>显示添加网站按钮</label>
+              <div class="toggle-wrapper">
+                <button
+                  class="toggle-btn"
+                  :class="{ active: config.showAddButton }"
+                  @click="emit('update:showAddButton', !config.showAddButton)"
+                >
+                  <span class="toggle-slider"></span>
+                </button>
+                <span class="toggle-label">{{ config.showAddButton ? '显示' : '隐藏' }}</span>
+              </div>
+            </div>
+
+            <!-- 图标大小 -->
+            <div class="setting-item">
+              <label>图标大小</label>
+              <div class="size-options">
+                <button
+                  class="size-option"
+                  :class="{ active: config.iconSize === 'small' }"
+                  @click="emit('update:iconSize', 'small')"
+                >
+                  小
+                </button>
+                <button
+                  class="size-option"
+                  :class="{ active: config.iconSize === 'medium' }"
+                  @click="emit('update:iconSize', 'medium')"
+                >
+                  中
+                </button>
+                <button
+                  class="size-option"
+                  :class="{ active: config.iconSize === 'large' }"
+                  @click="emit('update:iconSize', 'large')"
+                >
+                  大
+                </button>
+              </div>
+            </div>
+
             <!-- 壁纸设置 -->
             <div class="setting-item">
               <label>背景壁纸</label>
@@ -225,12 +270,12 @@ function handleClose() {
             <!-- GitHub 导入 -->
             <div class="setting-item">
               <label>从 GitHub 导入</label>
-              <p class="description">输入配置文件的 GitHub 链接（支持 raw 链接）</p>
+              <p class="description">输入 GitHub 用户名（默认仓库 NavGoConf）或仓库 URL</p>
               <div class="github-input">
                 <input
                   v-model="githubUrl"
                   type="text"
-                  placeholder="https://github.com/user/repo/blob/main/config.json"
+                  placeholder="https://github.com/user/repo"
                   :disabled="isImporting"
                 />
                 <button
@@ -406,6 +451,74 @@ function handleClose() {
 .engine-option span {
   font-size: 14px;
   color: #333;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border: none;
+  border-radius: 13px;
+  background: #ddd;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.toggle-btn.active {
+  background: #4a90d9;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn.active .toggle-slider {
+  transform: translateX(22px);
+}
+
+.toggle-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.size-options {
+  display: flex;
+  gap: 12px;
+}
+
+.size-option {
+  padding: 10px 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.size-option:hover {
+  border-color: #4a90d9;
+}
+
+.size-option.active {
+  border-color: #4a90d9;
+  background: #e3f2fd;
+  color: #4a90d9;
 }
 
 .wallpaper-options {

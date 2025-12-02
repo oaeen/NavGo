@@ -106,6 +106,16 @@ async function handleClearWallpaper() {
   config.value = await getConfig()
 }
 
+async function handleUpdateShowAddButton(value: boolean) {
+  config.value.showAddButton = value
+  await setConfig(config.value)
+}
+
+async function handleUpdateIconSize(value: 'small' | 'medium' | 'large') {
+  config.value.iconSize = value
+  await setConfig(config.value)
+}
+
 async function handleImport(data: { sites: Site[]; config: AppConfig }) {
   sites.value = data.sites.map((site, index) => ({
     ...site,
@@ -143,6 +153,8 @@ onMounted(() => {
       <!-- 网站网格 -->
       <SiteGrid
         :sites="sites"
+        :show-add-button="config.showAddButton"
+        :icon-size="config.iconSize"
         @add="handleAddSite"
         @edit="handleEditSite"
         @delete="handleDeleteSite"
@@ -167,6 +179,8 @@ onMounted(() => {
       @change-wallpaper="handleChangeWallpaper"
       @clear-wallpaper="handleClearWallpaper"
       @import="handleImport"
+      @update:show-add-button="handleUpdateShowAddButton"
+      @update:icon-size="handleUpdateIconSize"
     />
 
   </div>

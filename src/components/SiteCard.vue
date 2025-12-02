@@ -5,7 +5,36 @@ import { getFaviconUrl } from '@/utils/favicon'
 
 const props = defineProps<{
   site: Site
+  iconSize: 'small' | 'medium' | 'large'
 }>()
+
+const sizeConfig = {
+  small: { icon: 56, font: 24, name: 12 },
+  medium: { icon: 72, font: 30, name: 13 },
+  large: { icon: 88, font: 36, name: 14 }
+}
+
+const iconStyle = computed(() => {
+  const size = sizeConfig[props.iconSize]
+  return {
+    width: `${size.icon}px`,
+    height: `${size.icon}px`
+  }
+})
+
+const placeholderStyle = computed(() => {
+  const size = sizeConfig[props.iconSize]
+  return {
+    fontSize: `${size.font}px`
+  }
+})
+
+const nameStyle = computed(() => {
+  const size = sizeConfig[props.iconSize]
+  return {
+    fontSize: `${size.name}px`
+  }
+})
 
 const emit = defineEmits<{
   edit: [site: Site]
@@ -62,7 +91,7 @@ function closeMenu() {
     @contextmenu="handleContextMenu"
     @click.middle.prevent="handleContextMenu"
   >
-    <div class="icon-wrapper">
+    <div class="icon-wrapper" :style="iconStyle">
       <img
         v-if="iconUrl"
         :src="iconUrl"
@@ -70,11 +99,11 @@ function closeMenu() {
         class="site-icon"
         @error="handleIconError"
       />
-      <div v-else class="icon-placeholder">
+      <div v-else class="icon-placeholder" :style="placeholderStyle">
         {{ initial }}
       </div>
     </div>
-    <span class="site-name">{{ site.name }}</span>
+    <span class="site-name" :style="nameStyle">{{ site.name }}</span>
 
     <!-- 右键菜单 -->
     <Teleport to="body">
@@ -119,11 +148,9 @@ function closeMenu() {
 }
 
 .icon-wrapper {
-  width: 56px;
-  height: 56px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.15);
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +164,6 @@ function closeMenu() {
 }
 
 .icon-placeholder {
-  font-size: 24px;
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -145,7 +171,6 @@ function closeMenu() {
 
 .site-name {
   margin-top: 8px;
-  font-size: 12px;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   max-width: 80px;

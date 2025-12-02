@@ -1,6 +1,5 @@
 import { ref, computed, onMounted } from 'vue'
 import { useStorage } from './useStorage'
-import { compressWallpaper } from '@/utils/image'
 
 export function useWallpaper() {
   const wallpaper = ref<string | null>(null)
@@ -16,9 +15,9 @@ export function useWallpaper() {
         backgroundRepeat: 'no-repeat'
       }
     }
-    // 默认渐变背景
+    // 纯黑背景
     return {
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background: '#000000'
     }
   })
 
@@ -34,20 +33,29 @@ export function useWallpaper() {
 
   async function setWallpaper(file: File): Promise<void> {
     try {
-      // 压缩壁纸
-      const compressed = await compressWallpaper(file)
-      wallpaper.value = compressed
+      // 直接读取原图，不压缩
+      const base64 = await fileToBase64(file)
+      wallpaper.value = base64
 
       // 保存到存储
       const config = await getConfig()
       await setConfig({
         ...config,
-        wallpaper: compressed
+        wallpaper: base64
       })
     } catch (e) {
       console.error('Failed to set wallpaper:', e)
       throw e
     }
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
   }
 
   async function clearWallpaper(): Promise<void> {

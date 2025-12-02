@@ -9,6 +9,8 @@ export interface Site {
 export interface AppConfig {
   wallpaper: string | null
   searchEngine: 'google' | 'baidu' | 'bing'
+  showAddButton: boolean
+  iconSize: 'small' | 'medium' | 'large'
 }
 
 export interface StorageData {
@@ -30,6 +32,8 @@ export interface ExportSite {
 export interface ExportConfig {
   wallpaper: string | null  // 导出时为路径如 "wallpaper.jpg"
   searchEngine: 'google' | 'baidu' | 'bing'
+  showAddButton: boolean
+  iconSize: 'small' | 'medium' | 'large'
 }
 
 export interface ExportData {
@@ -40,7 +44,9 @@ export interface ExportData {
 
 export const DEFAULT_CONFIG: AppConfig = {
   wallpaper: null,
-  searchEngine: 'google'
+  searchEngine: 'google',
+  showAddButton: true,
+  iconSize: 'medium'
 }
 
 export const SEARCH_ENGINES = {

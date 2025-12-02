@@ -2,8 +2,10 @@
 import type { Site } from '@/types'
 import SiteCard from './SiteCard.vue'
 
-defineProps<{
+const props = defineProps<{
   sites: Site[]
+  showAddButton: boolean
+  iconSize: 'small' | 'medium' | 'large'
 }>()
 
 const emit = defineEmits<{
@@ -22,13 +24,14 @@ const MAX_SITES = 24 // 3行 x 8列
         v-for="site in sites"
         :key="site.id"
         :site="site"
+        :icon-size="props.iconSize"
         @edit="emit('edit', $event)"
         @delete="emit('delete', $event)"
       />
 
       <!-- 添加按钮 -->
       <button
-        v-if="sites.length < MAX_SITES"
+        v-if="props.showAddButton && sites.length < MAX_SITES"
         class="add-site-btn"
         @click="emit('add')"
       >
