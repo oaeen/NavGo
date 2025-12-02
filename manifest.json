@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "NavGo",
+  "version": "1.0.0",
+  "description": "简洁美观的新标签页，快速访问常用网站",
+  "permissions": ["storage"],
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  }
+}
