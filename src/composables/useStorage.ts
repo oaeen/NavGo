@@ -5,17 +5,18 @@ import { DEFAULT_CONFIG } from '@/types'
 const STORAGE_KEY = 'navgo_data'
 const CURRENT_VERSION = '1.0.0'
 
-// 检测是否在 Chrome 扩展环境中（函数形式，每次调用时检测）
+// 检测是否在 Chrome 扩展环境中
 function isExtensionEnv(): boolean {
-  const result = typeof chrome !== 'undefined'
+  return typeof chrome !== 'undefined'
     && typeof chrome.storage !== 'undefined'
     && typeof chrome.storage.local !== 'undefined'
-  console.log('[NavGo] isExtensionEnv check:', result, {
-    chromeExists: typeof chrome !== 'undefined',
-    storageExists: typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined',
-    localExists: typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined' && typeof chrome.storage.local !== 'undefined'
-  })
-  return result
+}
+
+// 验证配置对象是否有效
+function isValidConfig(config: unknown): config is AppConfig {
+  if (!config || typeof config !== 'object') return false
+  const c = config as Record<string, unknown>
+  return ['google', 'baidu', 'bing'].includes(c.searchEngine as string)
 }
 
 export function useStorage() {
@@ -24,18 +25,29 @@ export function useStorage() {
 
   async function getData(): Promise<StorageData> {
     try {
+      let rawData: unknown = null
+
       if (isExtensionEnv()) {
         const result = await chrome.storage.local.get(STORAGE_KEY)
-        console.log('[NavGo] Reading from chrome.storage.local')
-        if (result[STORAGE_KEY]) {
-          return result[STORAGE_KEY] as StorageData
-        }
+        rawData = result[STORAGE_KEY]
       } else {
-        // 开发环境使用 localStorage
         const data = localStorage.getItem(STORAGE_KEY)
-        console.log('[NavGo] Reading from localStorage')
         if (data) {
-          return JSON.parse(data) as StorageData
+          rawData = JSON.parse(data)
+        }
+      }
+
+      if (rawData && typeof rawData === 'object') {
+        const data = rawData as Record<string, unknown>
+
+        const sites = data.sites && typeof data.sites === 'object'
+          ? Object.values(data.sites) as Site[]
+          : []
+
+        return {
+          sites,
+          config: isValidConfig(data.config) ? data.config as AppConfig : { ...DEFAULT_CONFIG },
+          version: typeof data.version === 'string' ? data.version : CURRENT_VERSION
         }
       }
     } catch (e) {
@@ -59,24 +71,10 @@ export function useStorage() {
         version: CURRENT_VERSION
       }
 
-      console.log('[NavGo] Saving data:', JSON.stringify(updated).slice(0, 500))
-
       if (isExtensionEnv()) {
         await chrome.storage.local.set({ [STORAGE_KEY]: updated })
-        console.log('[NavGo] Data saved to chrome.storage.local')
-        // 验证保存是否成功
-        const verify = await chrome.storage.local.get(STORAGE_KEY)
-        const verifyData = verify[STORAGE_KEY] as StorageData | undefined
-        console.log('[NavGo] Verification - saved sites count:', verifyData?.sites?.length)
       } else {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-        console.log('[NavGo] Data saved to localStorage')
-        // 验证保存是否成功
-        const verify = localStorage.getItem(STORAGE_KEY)
-        if (verify) {
-          const parsed = JSON.parse(verify)
-          console.log('[NavGo] Verification - saved sites count:', parsed.sites?.length)
-        }
       }
       error.value = null
     } catch (e) {
