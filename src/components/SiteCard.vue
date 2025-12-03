@@ -1,21 +1,29 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Site } from '@/types'
+import { ICON_SIZE_MIN } from '@/types'
 import { getFaviconUrl } from '@/utils/favicon'
 
 const props = defineProps<{
   site: Site
-  iconSize: 'small' | 'medium' | 'large'
+  iconSize: number // 无级调节，范围 56-132
 }>()
 
-const sizeConfig = {
-  small: { icon: 56, font: 24, name: 12 },
-  medium: { icon: 72, font: 30, name: 13 },
-  large: { icon: 88, font: 36, name: 14 }
+// 根据 iconSize 计算各个尺寸
+// 基准：56px -> font 24px, name 12px | 88px -> font 36px, name 14px
+// 扩展到 132px（88 * 1.5）时：font 54px, name 21px
+function calculateSizes(iconSize: number) {
+  // icon 直接使用传入值
+  const icon = iconSize
+  // font 按比例计算：24 + (size - 56) * 0.375（从24到54）
+  const font = Math.round(24 + (iconSize - ICON_SIZE_MIN) * 0.375)
+  // name 按比例计算：12 + (size - 56) * 0.0625（从12到约17）
+  const name = Math.round(12 + (iconSize - ICON_SIZE_MIN) * 0.0625 * 1.5)
+  return { icon, font, name }
 }
 
 const iconStyle = computed(() => {
-  const size = sizeConfig[props.iconSize]
+  const size = calculateSizes(props.iconSize)
   return {
     width: `${size.icon}px`,
     height: `${size.icon}px`
@@ -23,14 +31,14 @@ const iconStyle = computed(() => {
 })
 
 const placeholderStyle = computed(() => {
-  const size = sizeConfig[props.iconSize]
+  const size = calculateSizes(props.iconSize)
   return {
     fontSize: `${size.font}px`
   }
 })
 
 const nameStyle = computed(() => {
-  const size = sizeConfig[props.iconSize]
+  const size = calculateSizes(props.iconSize)
   return {
     fontSize: `${size.name}px`
   }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Site, AppConfig } from '@/types'
-import { SEARCH_ENGINES } from '@/types'
+import { SEARCH_ENGINES, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
 import {
   exportToZip,
   importFromZip,
@@ -23,7 +23,7 @@ const emit = defineEmits<{
   clearWallpaper: []
   import: [data: { sites: Site[]; config: AppConfig }]
   'update:showAddButton': [value: boolean]
-  'update:iconSize': [value: 'small' | 'medium' | 'large']
+  'update:iconSize': [value: number]
 }>()
 
 const activeTab = ref<'general' | 'data'>('general')
@@ -180,28 +180,18 @@ function handleClose() {
             <!-- 图标大小 -->
             <div class="setting-item">
               <label>图标大小</label>
-              <div class="size-options">
-                <button
-                  class="size-option"
-                  :class="{ active: config.iconSize === 'small' }"
-                  @click="emit('update:iconSize', 'small')"
-                >
-                  小
-                </button>
-                <button
-                  class="size-option"
-                  :class="{ active: config.iconSize === 'medium' }"
-                  @click="emit('update:iconSize', 'medium')"
-                >
-                  中
-                </button>
-                <button
-                  class="size-option"
-                  :class="{ active: config.iconSize === 'large' }"
-                  @click="emit('update:iconSize', 'large')"
-                >
-                  大
-                </button>
+              <div class="size-slider-wrapper">
+                <span class="size-label">小</span>
+                <input
+                  type="range"
+                  class="size-slider"
+                  :min="ICON_SIZE_MIN"
+                  :max="ICON_SIZE_MAX"
+                  :value="config.iconSize"
+                  @input="emit('update:iconSize', Number(($event.target as HTMLInputElement).value))"
+                />
+                <span class="size-label">大</span>
+                <span class="size-value">{{ config.iconSize }}px</span>
               </div>
             </div>
 
@@ -495,30 +485,61 @@ function handleClose() {
   color: #666;
 }
 
-.size-options {
+.size-slider-wrapper {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.size-option {
-  padding: 10px 24px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 14px;
-  color: #333;
+.size-label {
+  font-size: 13px;
+  color: #666;
+  min-width: 20px;
+}
+
+.size-slider {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ddd;
+  border-radius: 3px;
+  outline: none;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.size-option:hover {
-  border-color: #4a90d9;
+.size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4a90d9;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s ease;
 }
 
-.size-option.active {
-  border-color: #4a90d9;
-  background: #e3f2fd;
+.size-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.size-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #4a90d9;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.size-value {
+  font-size: 13px;
   color: #4a90d9;
+  font-weight: 500;
+  min-width: 50px;
+  text-align: right;
 }
 
 .wallpaper-options {

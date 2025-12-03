@@ -1,6 +1,17 @@
 import { ref } from 'vue'
 import type { Site, AppConfig, StorageData } from '@/types'
-import { DEFAULT_CONFIG } from '@/types'
+import { DEFAULT_CONFIG, ICON_SIZE_DEFAULT, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
+
+// 兼容旧版本字符串类型的 iconSize，转换为数字
+function normalizeIconSize(iconSize: unknown): number {
+  if (typeof iconSize === 'number') {
+    return Math.min(Math.max(iconSize, ICON_SIZE_MIN), ICON_SIZE_MAX)
+  }
+  if (iconSize === 'small') return 56
+  if (iconSize === 'medium') return 72
+  if (iconSize === 'large') return 88
+  return ICON_SIZE_DEFAULT
+}
 
 const STORAGE_KEY = 'navgo_data'
 const CURRENT_VERSION = '1.0.0'
@@ -37,7 +48,12 @@ export function useStorage() {
           ? Object.values(data.sites) as Site[]
           : []
 
-        const config = { ...DEFAULT_CONFIG, ...data.config as AppConfig }
+        const rawConfig = data.config as Record<string, unknown> || {}
+        const config: AppConfig = {
+          ...DEFAULT_CONFIG,
+          ...rawConfig,
+          iconSize: normalizeIconSize(rawConfig.iconSize)
+        } as AppConfig
 
         return {
           sites,
