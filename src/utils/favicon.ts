@@ -1,13 +1,10 @@
-// 检测是否在扩展环境
-function isExtensionEnv(): boolean {
-  return typeof chrome !== 'undefined' && !!chrome.runtime?.sendMessage
-}
+import { isRuntimeEnv, blobToBase64 } from './common'
 
 /**
  * 通过 background script 获取网站标题
  */
 export async function fetchSiteTitleViaBackground(url: string): Promise<string | null> {
-  if (!isExtensionEnv()) return null
+  if (!isRuntimeEnv()) return null
 
   return new Promise((resolve) => {
     try {
@@ -29,7 +26,7 @@ export async function fetchSiteTitleViaBackground(url: string): Promise<string |
  * 使用 Clearbit/icon.horse 等专业图标服务
  */
 export async function fetchHighResIconViaBackground(domain: string): Promise<string | null> {
-  if (!isExtensionEnv()) return null
+  if (!isRuntimeEnv()) return null
 
   return new Promise((resolve) => {
     try {
@@ -73,18 +70,9 @@ export async function fetchFaviconAsBase64(url: string): Promise<string | null> 
     if (blob.size > 100) {
       return await blobToBase64(blob)
     }
-  } catch {
-    // 获取失败
+  } catch (e) {
+    console.warn('[NavGo] Failed to fetch favicon:', e)
   }
 
   return null
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }

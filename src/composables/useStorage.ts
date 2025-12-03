@@ -1,16 +1,10 @@
 import { ref } from 'vue'
 import type { Site, AppConfig, StorageData } from '@/types'
 import { DEFAULT_CONFIG } from '@/types'
+import { isExtensionEnv } from '@/utils/common'
 
 const STORAGE_KEY = 'navgo_data'
 const CURRENT_VERSION = '1.0.0'
-
-// 检测是否在 Chrome 扩展环境中
-function isExtensionEnv(): boolean {
-  return typeof chrome !== 'undefined'
-    && typeof chrome.storage !== 'undefined'
-    && typeof chrome.storage.local !== 'undefined'
-}
 
 export function useStorage() {
   const isLoading = ref(true)
