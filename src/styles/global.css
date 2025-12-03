@@ -80,3 +80,17 @@ img {
   opacity: 0;
   transform: scale(0.9);
 }
+
+/* 拖拽时的全局样式 */
+body.is-dragging {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+body.is-dragging * {
+  cursor: grabbing !important;
+}
+
+body.is-dragging a {
+  pointer-events: none;
+}
