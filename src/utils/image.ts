@@ -1,10 +1,10 @@
 /**
  * 压缩图片并转换为 Base64
+ * 智能选择输出尺寸，保留更多细节
  */
 export async function compressImage(
   file: File,
-  maxSize: number = 128,
-  quality: number = 0.8
+  maxSize: number = 128
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
@@ -22,13 +22,20 @@ export async function compressImage(
       const x = (img.width - size) / 2
       const y = (img.height - size) / 2
 
-      canvas.width = maxSize
-      canvas.height = maxSize
+      // 智能选择输出尺寸：如果原图较小，保持原尺寸；否则使用 maxSize
+      const outputSize = Math.min(size, maxSize)
+
+      canvas.width = outputSize
+      canvas.height = outputSize
+
+      // 启用高质量图像平滑
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
 
       // 绘制图片
-      ctx.drawImage(img, x, y, size, size, 0, 0, maxSize, maxSize)
+      ctx.drawImage(img, x, y, size, size, 0, 0, outputSize, outputSize)
 
-      resolve(canvas.toDataURL('image/png', quality))
+      resolve(canvas.toDataURL('image/png'))
       URL.revokeObjectURL(img.src)
     }
 

@@ -238,7 +238,7 @@ async function handleFileUpload(e: Event) {
   if (!file) return
 
   try {
-    const compressed = await compressImage(file, 64)
+    const compressed = await compressImage(file, 128)
     icon.value = compressed
   } catch (err) {
     console.error('Failed to process image:', err)
