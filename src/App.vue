@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { Site, AppConfig } from '@/types'
+import type { Site, AppConfig, CustomSearchEngine, SearchEngineKey } from '@/types'
 import { DEFAULT_CONFIG } from '@/types'
 import { useStorage } from '@/composables/useStorage'
 import { useWallpaper } from '@/composables/useWallpaper'
@@ -55,6 +55,17 @@ async function handleDeleteSite(site: Site) {
   await setSites(sites.value)
 }
 
+async function handleReorderSites(fromIndex: number, toIndex: number) {
+  const removed = sites.value.splice(fromIndex, 1)[0]
+  if (!removed) return
+  sites.value.splice(toIndex, 0, removed)
+  // 更新所有 order
+  sites.value.forEach((site, i) => {
+    site.order = i
+  })
+  await setSites(sites.value)
+}
+
 async function handleSaveSite(siteData: { id?: string; name: string; url: string; icon: string | null }) {
   if (siteData.id) {
     // 更新现有网站
@@ -87,8 +98,13 @@ async function handleSaveSite(siteData: { id?: string; name: string; url: string
 }
 
 // 设置相关
-async function handleChangeEngine(engine: 'google' | 'baidu' | 'bing') {
+async function handleChangeEngine(engine: SearchEngineKey) {
   config.value.searchEngine = engine
+  await setConfig(config.value)
+}
+
+async function handleUpdateCustomSearchEngine(customEngine: CustomSearchEngine | null) {
+  config.value.customSearchEngine = customEngine
   await setConfig(config.value)
 }
 
@@ -107,7 +123,7 @@ async function handleUpdateShowAddButton(value: boolean) {
   await setConfig(config.value)
 }
 
-async function handleUpdateIconSize(value: 'small' | 'medium' | 'large') {
+async function handleUpdateIconSize(value: number) {
   config.value.iconSize = value
   await setConfig(config.value)
 }
@@ -143,6 +159,7 @@ onMounted(() => {
       <!-- 搜索栏 -->
       <SearchBar
         :search-engine="config.searchEngine"
+        :custom-search-engine="config.customSearchEngine"
         @change-engine="handleChangeEngine"
       />
 
@@ -154,6 +171,7 @@ onMounted(() => {
         @add="handleAddSite"
         @edit="handleEditSite"
         @delete="handleDeleteSite"
+        @reorder="handleReorderSites"
       />
     </div>
 
@@ -177,6 +195,7 @@ onMounted(() => {
       @import="handleImport"
       @update:show-add-button="handleUpdateShowAddButton"
       @update:icon-size="handleUpdateIconSize"
+      @update:custom-search-engine="handleUpdateCustomSearchEngine"
     />
 
   </div>

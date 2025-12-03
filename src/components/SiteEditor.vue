@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Site } from '@/types'
-import { getFaviconUrl, fetchFaviconAsBase64, fetchSiteTitleViaBackground, fetchHighResIconViaBackground } from '@/utils/favicon'
+import {
+  getFaviconUrl,
+  fetchFaviconAsBase64,
+  fetchSiteInfoViaBackground,
+  fetchIconWithParsedInfoViaBackground,
+  fetchHighResIconViaBackground
+} from '@/utils/favicon'
 import { compressImage } from '@/utils/image'
 
 const props = defineProps<{
@@ -67,10 +73,26 @@ async function fetchIcon() {
     const normalizedUrl = normalizeUrl(url.value)
     const domain = new URL(normalizedUrl).hostname
 
-    // 优先使用高清图标服务
-    let iconBase64 = await fetchHighResIconViaBackground(domain)
+    // 第一步：获取网站信息以解析图标链接
+    const siteInfo = await fetchSiteInfoViaBackground(normalizedUrl)
 
-    // 备选：Google Favicon
+    let iconBase64: string | null = null
+
+    // 优先使用从 HTML 解析的图标信息
+    if (siteInfo.icons && siteInfo.icons.length > 0) {
+      iconBase64 = await fetchIconWithParsedInfoViaBackground(
+        siteInfo.icons,
+        domain,
+        normalizedUrl
+      )
+    }
+
+    // 备选：直接获取高清图标
+    if (!iconBase64) {
+      iconBase64 = await fetchHighResIconViaBackground(domain, normalizedUrl)
+    }
+
+    // 最后备选：Google Favicon
     if (!iconBase64) {
       iconBase64 = await fetchFaviconAsBase64(normalizedUrl)
     }
@@ -88,6 +110,13 @@ async function fetchIcon() {
 /**
  * 自动获取网站信息（标题和图标）
  * 当用户输入 URL 并失去焦点时触发
+ *
+ * 图标获取优先级：
+ * 1. 网站 HTML 中声明的高清图标 (apple-touch-icon, 大尺寸 icon)
+ * 2. manifest.json 中的图标
+ * 3. 常见路径探测 (/apple-touch-icon.png 等)
+ * 4. 第三方服务 (Clearbit, icon.horse, DuckDuckGo)
+ * 5. Google Favicon 服务
  */
 async function fetchSiteInfo() {
   if (!url.value) return
@@ -102,31 +131,44 @@ async function fetchSiteInfo() {
     const urlObj = new URL(normalizedUrl)
     const domain = urlObj.hostname
 
-    // 并行获取标题和图标
-    const [title, iconBase64] = await Promise.all([
-      // 获取标题
-      name.value ? Promise.resolve(null) : fetchSiteTitleViaBackground(normalizedUrl),
-      // 获取高清图标（优先使用 Clearbit/icon.horse）
-      icon.value ? Promise.resolve(null) : fetchHighResIconViaBackground(domain)
-    ])
+    // 第一步：获取网站信息（标题和解析的图标链接）
+    const siteInfo = await fetchSiteInfoViaBackground(normalizedUrl)
 
     // 设置标题
-    if (!name.value && title) {
+    if (!name.value && siteInfo.title) {
       const textarea = document.createElement('textarea')
-      textarea.innerHTML = title
+      textarea.innerHTML = siteInfo.title
       name.value = textarea.value
     }
 
-    // 设置图标
-    if (!icon.value && iconBase64) {
-      icon.value = iconBase64
-    }
-
-    // 如果高清图标获取失败，使用备选方案
+    // 第二步：使用解析的图标信息获取高清图标
     if (!icon.value) {
-      const fallbackIcon = await fetchFaviconAsBase64(normalizedUrl)
-      if (fallbackIcon) {
-        icon.value = fallbackIcon
+      // 优先使用从 HTML 解析的图标信息
+      if (siteInfo.icons && siteInfo.icons.length > 0) {
+        const iconBase64 = await fetchIconWithParsedInfoViaBackground(
+          siteInfo.icons,
+          domain,
+          normalizedUrl
+        )
+        if (iconBase64) {
+          icon.value = iconBase64
+        }
+      }
+
+      // 如果解析的图标获取失败，尝试直接获取高清图标
+      if (!icon.value) {
+        const iconBase64 = await fetchHighResIconViaBackground(domain, normalizedUrl)
+        if (iconBase64) {
+          icon.value = iconBase64
+        }
+      }
+
+      // 最后备选：Google Favicon
+      if (!icon.value) {
+        const fallbackIcon = await fetchFaviconAsBase64(normalizedUrl)
+        if (fallbackIcon) {
+          icon.value = fallbackIcon
+        }
       }
     }
   } catch {
@@ -136,7 +178,7 @@ async function fetchSiteInfo() {
   // 回退：使用域名作为名称
   if (!name.value) {
     try {
-      name.value = new URL(normalizedUrl).hostname.replace('www.', '')
+      name.value = new URL(normalizeUrl(url.value)).hostname.replace('www.', '')
     } catch {}
   }
 
