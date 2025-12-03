@@ -111,7 +111,7 @@ async function handleUpdateShowAddButton(value: boolean) {
   await setConfig(config.value)
 }
 
-async function handleUpdateIconSize(value: 'small' | 'medium' | 'large') {
+async function handleUpdateIconSize(value: number) {
   config.value.iconSize = value
   await setConfig(config.value)
 }

@@ -6,11 +6,16 @@ export interface Site {
   order: number
 }
 
+// 图标大小范围常量
+export const ICON_SIZE_MIN = 56  // 最小大小（原 small）
+export const ICON_SIZE_MAX = 132 // 最大大小（原 large 的 150%: 88 * 1.5）
+export const ICON_SIZE_DEFAULT = 72 // 默认大小（原 medium）
+
 export interface AppConfig {
   wallpaper: string | null
   searchEngine: 'google' | 'baidu' | 'bing'
   showAddButton: boolean
-  iconSize: 'small' | 'medium' | 'large'
+  iconSize: number // 无级调节，范围 56-132
 }
 
 export interface StorageData {
@@ -33,7 +38,7 @@ export interface ExportConfig {
   wallpaper: string | null  // 导出时为路径如 "wallpaper.jpg"
   searchEngine: 'google' | 'baidu' | 'bing'
   showAddButton: boolean
-  iconSize: 'small' | 'medium' | 'large'
+  iconSize: number // 无级调节，范围 56-132
 }
 
 export interface ExportData {
@@ -46,7 +51,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   wallpaper: null,
   searchEngine: 'google',
   showAddButton: true,
-  iconSize: 'medium'
+  iconSize: ICON_SIZE_DEFAULT
 }
 
 export const SEARCH_ENGINES = {

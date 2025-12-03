@@ -5,7 +5,7 @@ import SiteCard from './SiteCard.vue'
 const props = defineProps<{
   sites: Site[]
   showAddButton: boolean
-  iconSize: 'small' | 'medium' | 'large'
+  iconSize: number // 无级调节，范围 56-132
 }>()
 
 const emit = defineEmits<{

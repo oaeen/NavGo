@@ -1,6 +1,20 @@
 import JSZip from 'jszip'
 import type { Site, AppConfig, ExportData, ExportSite, ExportConfig } from '@/types'
+import { ICON_SIZE_DEFAULT, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
 import { base64ToBlob, getImageExtension } from '@/utils/image'
+
+// 兼容旧版本字符串类型的 iconSize，转换为数字
+function normalizeIconSize(iconSize: unknown): number {
+  if (typeof iconSize === 'number') {
+    // 确保在有效范围内
+    return Math.min(Math.max(iconSize, ICON_SIZE_MIN), ICON_SIZE_MAX)
+  }
+  // 兼容旧版本的字符串类型
+  if (iconSize === 'small') return 56
+  if (iconSize === 'medium') return 72
+  if (iconSize === 'large') return 88
+  return ICON_SIZE_DEFAULT
+}
 
 const EXPORT_VERSION = '1.0.0'
 
@@ -122,7 +136,9 @@ export async function importFromZip(file: File): Promise<FullExportData> {
   return {
     version: exportData.version,
     config: {
-      ...exportData.config,
+      searchEngine: exportData.config.searchEngine,
+      showAddButton: exportData.config.showAddButton ?? true,
+      iconSize: normalizeIconSize(exportData.config.iconSize),
       wallpaper
     },
     sites
@@ -141,11 +157,14 @@ export async function importFromJson(file: File): Promise<FullExportData> {
     throw new Error('无效的配置格式：缺少 sites 数组')
   }
 
+  const configData = data.config || {}
   return {
     version: data.version || '1.0.0',
-    config: data.config || {
-      wallpaper: null,
-      searchEngine: 'google'
+    config: {
+      wallpaper: configData.wallpaper ?? null,
+      searchEngine: configData.searchEngine || 'google',
+      showAddButton: configData.showAddButton ?? true,
+      iconSize: normalizeIconSize(configData.iconSize)
     },
     sites: data.sites.map((site: Partial<Site>, index: number) => ({
       id: site.id || generateId(),
@@ -254,7 +273,7 @@ export async function importFromGitHub(input: string): Promise<FullExportData> {
     config: {
       searchEngine: exportData.config.searchEngine,
       showAddButton: exportData.config.showAddButton ?? true,
-      iconSize: exportData.config.iconSize ?? 'medium',
+      iconSize: normalizeIconSize(exportData.config.iconSize),
       wallpaper
     },
     sites
