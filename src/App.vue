@@ -59,6 +59,17 @@ async function handleDeleteSite(site: Site) {
   await setSites(sites.value)
 }
 
+async function handleReorderSites(fromIndex: number, toIndex: number) {
+  const removed = sites.value.splice(fromIndex, 1)[0]
+  if (!removed) return
+  sites.value.splice(toIndex, 0, removed)
+  // 更新所有 order
+  sites.value.forEach((site, i) => {
+    site.order = i
+  })
+  await setSites(sites.value)
+}
+
 async function handleSaveSite(siteData: { id?: string; name: string; url: string; icon: string | null }) {
   if (siteData.id) {
     // 更新现有网站
@@ -158,6 +169,7 @@ onMounted(() => {
         @add="handleAddSite"
         @edit="handleEditSite"
         @delete="handleDeleteSite"
+        @reorder="handleReorderSites"
       />
     </div>
 

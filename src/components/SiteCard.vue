@@ -7,6 +7,8 @@ import { getFaviconUrl } from '@/utils/favicon'
 const props = defineProps<{
   site: Site
   iconSize: number // 无级调节，范围 56-132
+  draggable?: boolean
+  isDragging?: boolean
 }>()
 
 // 根据 iconSize 计算各个尺寸
@@ -47,6 +49,8 @@ const nameStyle = computed(() => {
 const emit = defineEmits<{
   edit: [site: Site]
   delete: [site: Site]
+  dragstart: [event: DragEvent]
+  dragend: [event: DragEvent]
 }>()
 
 const iconError = ref(false)
@@ -90,14 +94,42 @@ function handleDelete() {
 function closeMenu() {
   showMenu.value = false
 }
+
+// 拖拽事件处理
+function handleDragStart(event: DragEvent) {
+  // 阻止链接的默认拖拽行为
+  if (event.dataTransfer) {
+    // 创建自定义拖拽图像
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    event.dataTransfer.setDragImage(target, rect.width / 2, rect.height / 2)
+  }
+  emit('dragstart', event)
+}
+
+function handleDragEnd(event: DragEvent) {
+  emit('dragend', event)
+}
+
+// 点击处理（拖拽时阻止链接跳转）
+function handleClick(event: MouseEvent) {
+  if (props.isDragging) {
+    event.preventDefault()
+  }
+}
 </script>
 
 <template>
   <a
     :href="site.url"
     class="site-card"
+    :class="{ 'is-dragging': isDragging }"
+    :draggable="draggable"
     @contextmenu="handleContextMenu"
     @click.middle.prevent="handleContextMenu"
+    @click="handleClick"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
   >
     <div class="icon-wrapper" :style="iconStyle">
       <img
@@ -148,11 +180,24 @@ function closeMenu() {
   transition: all 0.2s ease;
   position: relative;
   cursor: pointer;
+  user-select: none;
 }
 
 .site-card:hover {
   background: rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
+}
+
+.site-card[draggable="true"] {
+  cursor: grab;
+}
+
+.site-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.site-card.is-dragging {
+  cursor: grabbing;
 }
 
 .icon-wrapper {
@@ -163,18 +208,21 @@ function closeMenu() {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
 .site-icon {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  pointer-events: none;
 }
 
 .icon-placeholder {
   font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 .site-name {
@@ -186,6 +234,7 @@ function closeMenu() {
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
+  pointer-events: none;
 }
 
 .menu-overlay {
