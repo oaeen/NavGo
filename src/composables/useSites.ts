@@ -1,15 +1,12 @@
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import type { Site } from '@/types'
 import { useStorage } from './useStorage'
+import { generateId } from '@/utils/common'
 
 export function useSites() {
   const sites = ref<Site[]>([])
   const isLoading = ref(true)
   const { getSites, setSites } = useStorage()
-
-  function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2)
-  }
 
   async function loadSites() {
     isLoading.value = true
@@ -76,10 +73,6 @@ export function useSites() {
     }))
     await setSites(sites.value)
   }
-
-  onMounted(() => {
-    loadSites()
-  })
 
   return {
     sites,

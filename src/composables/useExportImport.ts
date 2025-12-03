@@ -2,6 +2,7 @@ import JSZip from 'jszip'
 import type { Site, AppConfig, ExportData, ExportSite, ExportConfig } from '@/types'
 import { ICON_SIZE_DEFAULT, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
 import { base64ToBlob, getImageExtension } from '@/utils/image'
+import { generateId, blobToBase64 } from '@/utils/common'
 
 // 兼容旧版本字符串类型的 iconSize，转换为数字
 function normalizeIconSize(iconSize: unknown): number {
@@ -114,10 +115,14 @@ export async function importFromZip(file: File): Promise<FullExportData> {
 
     // 检查是否有图标文件（ExportSite.icon 现在是路径）
     if (site.icon && typeof site.icon === 'string') {
-      const iconFile = zip.file(site.icon)
-      if (iconFile) {
-        const iconBlob = await iconFile.async('blob')
-        siteWithIcon.icon = await blobToBase64(iconBlob)
+      try {
+        const iconFile = zip.file(site.icon)
+        if (iconFile) {
+          const iconBlob = await iconFile.async('blob')
+          siteWithIcon.icon = await blobToBase64(iconBlob)
+        }
+      } catch (e) {
+        console.warn('[NavGo] Failed to load icon from zip:', site.icon, e)
       }
     }
 
@@ -127,10 +132,14 @@ export async function importFromZip(file: File): Promise<FullExportData> {
   // 还原壁纸
   let wallpaper: string | null = null
   if (exportData.config.wallpaper && typeof exportData.config.wallpaper === 'string') {
-    const wallpaperFile = zip.file(exportData.config.wallpaper)
-    if (wallpaperFile) {
-      const wallpaperBlob = await wallpaperFile.async('blob')
-      wallpaper = await blobToBase64(wallpaperBlob)
+    try {
+      const wallpaperFile = zip.file(exportData.config.wallpaper)
+      if (wallpaperFile) {
+        const wallpaperBlob = await wallpaperFile.async('blob')
+        wallpaper = await blobToBase64(wallpaperBlob)
+      }
+    } catch (e) {
+      console.warn('[NavGo] Failed to load wallpaper from zip:', e)
     }
   }
 
@@ -250,7 +259,9 @@ export async function importFromGitHub(input: string): Promise<FullExportData> {
           .then(res => res.ok ? res.blob() : null)
           .then(blob => blob ? blobToBase64(blob) : null)
           .then(base64 => { siteWithIcon.icon = base64 })
-          .catch(() => {})
+          .catch((e) => {
+            console.warn('[NavGo] Failed to fetch icon from GitHub:', site.icon, e)
+          })
       )
     }
   }
@@ -265,7 +276,9 @@ export async function importFromGitHub(input: string): Promise<FullExportData> {
         const blob = await wallpaperResponse.blob()
         wallpaper = await blobToBase64(blob)
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[NavGo] Failed to fetch wallpaper from GitHub:', e)
+    }
   }
 
   // 等待所有图标加载完成
@@ -296,17 +309,4 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }

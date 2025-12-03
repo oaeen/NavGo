@@ -1,5 +1,6 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useStorage } from './useStorage'
+import { compressWallpaper } from '@/utils/image'
 
 export function useWallpaper() {
   const wallpaper = ref<string | null>(null)
@@ -33,8 +34,8 @@ export function useWallpaper() {
 
   async function setWallpaper(file: File): Promise<void> {
     try {
-      // 直接读取原图，不压缩
-      const base64 = await fileToBase64(file)
+      // 压缩壁纸以节省存储空间
+      const base64 = await compressWallpaper(file)
       wallpaper.value = base64
 
       // 保存到存储
@@ -44,18 +45,9 @@ export function useWallpaper() {
         wallpaper: base64
       })
     } catch (e) {
-      console.error('Failed to set wallpaper:', e)
+      console.error('[NavGo] Failed to set wallpaper:', e)
       throw e
     }
-  }
-
-  function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
   }
 
   async function clearWallpaper(): Promise<void> {
@@ -66,10 +58,6 @@ export function useWallpaper() {
       wallpaper: null
     })
   }
-
-  onMounted(() => {
-    loadWallpaper()
-  })
 
   return {
     wallpaper,

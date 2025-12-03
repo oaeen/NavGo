@@ -4,6 +4,7 @@ import type { Site, AppConfig, CustomSearchEngine, SearchEngineKey } from '@/typ
 import { DEFAULT_CONFIG } from '@/types'
 import { useStorage } from '@/composables/useStorage'
 import { useWallpaper } from '@/composables/useWallpaper'
+import { generateId } from '@/utils/common'
 import SearchBar from '@/components/SearchBar.vue'
 import SiteGrid from '@/components/SiteGrid.vue'
 import SiteEditor from '@/components/SiteEditor.vue'
@@ -23,7 +24,6 @@ const editingSite = ref<Site | null>(null)
 // 设置面板状态
 const showSettings = ref(false)
 
-
 async function loadData() {
   isLoading.value = true
   try {
@@ -33,10 +33,6 @@ async function loadData() {
   } finally {
     isLoading.value = false
   }
-}
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2)
 }
 
 // 网站管理

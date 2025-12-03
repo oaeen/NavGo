@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { Site, AppConfig, StorageData } from '@/types'
 import { DEFAULT_CONFIG, ICON_SIZE_DEFAULT, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
+import { isExtensionEnv } from '@/utils/common'
 
 // 兼容旧版本字符串类型的 iconSize，转换为数字
 function normalizeIconSize(iconSize: unknown): number {
@@ -15,13 +16,6 @@ function normalizeIconSize(iconSize: unknown): number {
 
 const STORAGE_KEY = 'navgo_data'
 const CURRENT_VERSION = '1.0.0'
-
-// 检测是否在 Chrome 扩展环境中
-function isExtensionEnv(): boolean {
-  return typeof chrome !== 'undefined'
-    && typeof chrome.storage !== 'undefined'
-    && typeof chrome.storage.local !== 'undefined'
-}
 
 export function useStorage() {
   const isLoading = ref(true)

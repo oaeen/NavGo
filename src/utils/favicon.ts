@@ -1,3 +1,5 @@
+import { isRuntimeEnv, blobToBase64 } from './common'
+
 // 图标信息接口
 export interface IconInfo {
   url: string
@@ -11,16 +13,11 @@ export interface SiteInfo {
   icons: IconInfo[]
 }
 
-// 检测是否在扩展环境
-function isExtensionEnv(): boolean {
-  return typeof chrome !== 'undefined' && !!chrome.runtime?.sendMessage
-}
-
 /**
  * 通过 background script 获取网站标题和图标信息
  */
 export async function fetchSiteInfoViaBackground(url: string): Promise<SiteInfo> {
-  if (!isExtensionEnv()) {
+  if (!isRuntimeEnv()) {
     return { title: null, icons: [] }
   }
 
@@ -58,7 +55,7 @@ export async function fetchIconWithParsedInfoViaBackground(
   domain: string,
   url: string
 ): Promise<string | null> {
-  if (!isExtensionEnv()) return null
+  if (!isRuntimeEnv()) return null
 
   return new Promise((resolve) => {
     try {
@@ -86,7 +83,7 @@ export async function fetchHighResIconViaBackground(
   domain: string,
   url?: string
 ): Promise<string | null> {
-  if (!isExtensionEnv()) return null
+  if (!isRuntimeEnv()) return null
 
   return new Promise((resolve) => {
     try {
@@ -130,18 +127,9 @@ export async function fetchFaviconAsBase64(url: string): Promise<string | null> 
     if (blob.size > 100) {
       return await blobToBase64(blob)
     }
-  } catch {
-    // 获取失败
+  } catch (e) {
+    console.warn('[NavGo] Failed to fetch favicon:', e)
   }
 
   return null
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }

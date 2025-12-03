@@ -9,6 +9,11 @@ export async function compressImage(
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      reject(new Error('无法获取 Canvas 上下文'))
+      return
+    }
+
     const img = new Image()
 
     img.onload = () => {
@@ -21,7 +26,7 @@ export async function compressImage(
       canvas.height = maxSize
 
       // 绘制图片
-      ctx!.drawImage(img, x, y, size, size, 0, 0, maxSize, maxSize)
+      ctx.drawImage(img, x, y, size, size, 0, 0, maxSize, maxSize)
 
       resolve(canvas.toDataURL('image/png', quality))
       URL.revokeObjectURL(img.src)
@@ -48,6 +53,11 @@ export async function compressWallpaper(
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      reject(new Error('无法获取 Canvas 上下文'))
+      return
+    }
+
     const img = new Image()
 
     img.onload = () => {
@@ -63,7 +73,7 @@ export async function compressWallpaper(
       canvas.width = width
       canvas.height = height
 
-      ctx!.drawImage(img, 0, 0, width, height)
+      ctx.drawImage(img, 0, 0, width, height)
 
       resolve(canvas.toDataURL('image/jpeg', quality))
       URL.revokeObjectURL(img.src)
