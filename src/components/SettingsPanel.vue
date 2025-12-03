@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Site, AppConfig } from '@/types'
+import { ref, computed } from 'vue'
+import type { Site, AppConfig, CustomSearchEngine, SearchEngineKey } from '@/types'
 import { SEARCH_ENGINES, ICON_SIZE_MIN, ICON_SIZE_MAX } from '@/types'
 import {
   exportToZip,
@@ -18,12 +18,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  changeEngine: [engine: 'google' | 'baidu' | 'bing']
+  changeEngine: [engine: SearchEngineKey]
   changeWallpaper: [file: File]
   clearWallpaper: []
   import: [data: { sites: Site[]; config: AppConfig }]
   'update:showAddButton': [value: boolean]
   'update:iconSize': [value: number]
+  'update:customSearchEngine': [value: CustomSearchEngine | null]
 }>()
 
 const activeTab = ref<'general' | 'data'>('general')
@@ -31,7 +32,27 @@ const githubUrl = ref('')
 const isImporting = ref(false)
 const importError = ref<string | null>(null)
 
-const engines = Object.entries(SEARCH_ENGINES) as [keyof typeof SEARCH_ENGINES, typeof SEARCH_ENGINES[keyof typeof SEARCH_ENGINES]][]
+// 自定义搜索引擎表单
+const customEngineForm = ref({
+  name: '',
+  url: '',
+  icon: ''
+})
+const showCustomEngineForm = ref(false)
+
+// 初始化自定义搜索引擎表单
+function initCustomEngineForm() {
+  if (props.config.customSearchEngine) {
+    customEngineForm.value = { ...props.config.customSearchEngine }
+  } else {
+    customEngineForm.value = { name: '', url: '', icon: '' }
+  }
+}
+
+// 内置引擎列表
+const engines = computed(() => {
+  return Object.entries(SEARCH_ENGINES) as [keyof typeof SEARCH_ENGINES, typeof SEARCH_ENGINES[keyof typeof SEARCH_ENGINES]][]
+})
 
 async function handleExport() {
   try {
@@ -108,6 +129,48 @@ function handleWallpaperUpload(e: Event) {
 function handleClose() {
   emit('close')
 }
+
+function handleEditCustomEngine() {
+  initCustomEngineForm()
+  showCustomEngineForm.value = true
+}
+
+function handleSaveCustomEngine() {
+  const { name, url, icon } = customEngineForm.value
+  if (!name.trim() || !url.trim()) {
+    return
+  }
+
+  const customEngine: CustomSearchEngine = {
+    name: name.trim(),
+    url: url.trim(),
+    icon: icon.trim() || 'https://www.google.com/s2/favicons?domain=' + new URL(url.trim()).hostname
+  }
+
+  emit('update:customSearchEngine', customEngine)
+  emit('changeEngine', 'custom')
+  showCustomEngineForm.value = false
+}
+
+function handleDeleteCustomEngine() {
+  emit('update:customSearchEngine', null)
+  if (props.config.searchEngine === 'custom') {
+    emit('changeEngine', 'perplexity')
+  }
+  showCustomEngineForm.value = false
+}
+
+function handleSelectEngine(key: string) {
+  if (key === 'custom') {
+    if (props.config.customSearchEngine) {
+      emit('changeEngine', 'custom')
+    } else {
+      handleEditCustomEngine()
+    }
+  } else {
+    emit('changeEngine', key as SearchEngineKey)
+  }
+}
 </script>
 
 <template>
@@ -154,11 +217,55 @@ function handleClose() {
                   :key="key"
                   class="engine-option"
                   :class="{ active: config.searchEngine === key }"
-                  @click="emit('changeEngine', key)"
+                  @click="handleSelectEngine(key)"
                 >
                   <img :src="engine.icon" :alt="engine.name" />
                   <span>{{ engine.name }}</span>
                 </button>
+                <!-- 自定义搜索引擎 -->
+                <button
+                  class="engine-option"
+                  :class="{ active: config.searchEngine === 'custom' }"
+                  @click="handleSelectEngine('custom')"
+                >
+                  <svg v-if="!config.customSearchEngine" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <img v-else :src="config.customSearchEngine.icon" alt="自定义" />
+                  <span>{{ config.customSearchEngine?.name || '自定义' }}</span>
+                </button>
+              </div>
+              <!-- 编辑自定义搜索引擎按钮 -->
+              <button
+                v-if="config.customSearchEngine"
+                class="edit-custom-btn"
+                @click="handleEditCustomEngine"
+              >
+                编辑自定义搜索引擎
+              </button>
+            </div>
+
+            <!-- 自定义搜索引擎表单 -->
+            <div v-if="showCustomEngineForm" class="custom-engine-form">
+              <h4>{{ config.customSearchEngine ? '编辑' : '添加' }}自定义搜索引擎</h4>
+              <div class="form-group">
+                <label>名称</label>
+                <input v-model="customEngineForm.name" type="text" placeholder="例如: DuckDuckGo" />
+              </div>
+              <div class="form-group">
+                <label>搜索 URL</label>
+                <input v-model="customEngineForm.url" type="text" placeholder="例如: https://duckduckgo.com/?q={query}" />
+                <p class="form-hint">使用 {query} 作为搜索词占位符</p>
+              </div>
+              <div class="form-group">
+                <label>图标 URL（可选）</label>
+                <input v-model="customEngineForm.icon" type="text" placeholder="留空则自动获取" />
+              </div>
+              <div class="form-actions">
+                <button class="btn-secondary" @click="showCustomEngineForm = false">取消</button>
+                <button v-if="config.customSearchEngine" class="btn-danger" @click="handleDeleteCustomEngine">删除</button>
+                <button class="btn-primary" @click="handleSaveCustomEngine">保存</button>
               </div>
             </div>
 
@@ -632,5 +739,124 @@ function handleClose() {
   border-radius: 8px;
   color: #e53935;
   font-size: 14px;
+}
+
+.engine-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.edit-custom-btn {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f5f5f5;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.edit-custom-btn:hover {
+  border-color: #4a90d9;
+  color: #4a90d9;
+}
+
+.custom-engine-form {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.custom-engine-form h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #666;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4a90d9;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #4a90d9;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #3a7fc8;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: #999;
+}
+
+.btn-danger {
+  padding: 8px 16px;
+  border: 1px solid #e53935;
+  border-radius: 6px;
+  background: #fff;
+  color: #e53935;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: #ffebee;
 }
 </style>

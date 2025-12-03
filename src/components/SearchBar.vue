@@ -1,33 +1,53 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { SEARCH_ENGINES } from '@/types'
+import { SEARCH_ENGINES, type CustomSearchEngine, type SearchEngineKey } from '@/types'
 
 const props = defineProps<{
-  searchEngine: 'google' | 'baidu' | 'bing'
+  searchEngine: SearchEngineKey
+  customSearchEngine: CustomSearchEngine | null
 }>()
 
 const emit = defineEmits<{
   search: [query: string]
-  changeEngine: [engine: 'google' | 'baidu' | 'bing']
+  changeEngine: [engine: SearchEngineKey]
 }>()
 
 const query = ref('')
 const showEngineDropdown = ref(false)
 
-const currentEngine = computed(() => SEARCH_ENGINES[props.searchEngine])
-const engines = computed(() => Object.entries(SEARCH_ENGINES))
+const currentEngine = computed(() => {
+  if (props.searchEngine === 'custom' && props.customSearchEngine) {
+    return props.customSearchEngine
+  }
+  const key = props.searchEngine as keyof typeof SEARCH_ENGINES
+  return SEARCH_ENGINES[key] || SEARCH_ENGINES.perplexity
+})
+
+const engines = computed(() => {
+  const builtIn = Object.entries(SEARCH_ENGINES) as [string, { name: string; url: string; icon: string }][]
+  if (props.customSearchEngine) {
+    return [...builtIn, ['custom', props.customSearchEngine] as [string, { name: string; url: string; icon: string }]]
+  }
+  return builtIn
+})
 
 function handleSearch() {
   const trimmed = query.value.trim()
   if (trimmed) {
-    const url = currentEngine.value.url + encodeURIComponent(trimmed)
+    let url: string
+    if (props.searchEngine === 'custom' && props.customSearchEngine) {
+      // 自定义搜索引擎使用 {query} 占位符
+      url = props.customSearchEngine.url.replace('{query}', encodeURIComponent(trimmed))
+    } else {
+      url = currentEngine.value.url + encodeURIComponent(trimmed)
+    }
     window.location.href = url
     emit('search', trimmed)
   }
 }
 
 function selectEngine(key: string) {
-  emit('changeEngine', key as 'google' | 'baidu' | 'bing')
+  emit('changeEngine', key as SearchEngineKey)
   showEngineDropdown.value = false
 }
 

@@ -69,6 +69,7 @@ export async function exportToZip(
   const exportConfig: ExportConfig = {
     wallpaper: wallpaperPath,
     searchEngine: config.searchEngine,
+    customSearchEngine: config.customSearchEngine,
     showAddButton: config.showAddButton,
     iconSize: config.iconSize
   }
@@ -136,7 +137,8 @@ export async function importFromZip(file: File): Promise<FullExportData> {
   return {
     version: exportData.version,
     config: {
-      searchEngine: exportData.config.searchEngine,
+      searchEngine: exportData.config.searchEngine || 'perplexity',
+      customSearchEngine: exportData.config.customSearchEngine || null,
       showAddButton: exportData.config.showAddButton ?? true,
       iconSize: normalizeIconSize(exportData.config.iconSize),
       wallpaper
@@ -162,7 +164,8 @@ export async function importFromJson(file: File): Promise<FullExportData> {
     version: data.version || '1.0.0',
     config: {
       wallpaper: configData.wallpaper ?? null,
-      searchEngine: configData.searchEngine || 'google',
+      searchEngine: configData.searchEngine || 'perplexity',
+      customSearchEngine: configData.customSearchEngine || null,
       showAddButton: configData.showAddButton ?? true,
       iconSize: normalizeIconSize(configData.iconSize)
     },
@@ -271,7 +274,8 @@ export async function importFromGitHub(input: string): Promise<FullExportData> {
   return {
     version: exportData.version,
     config: {
-      searchEngine: exportData.config.searchEngine,
+      searchEngine: exportData.config.searchEngine || 'perplexity',
+      customSearchEngine: exportData.config.customSearchEngine || null,
       showAddButton: exportData.config.showAddButton ?? true,
       iconSize: normalizeIconSize(exportData.config.iconSize),
       wallpaper
