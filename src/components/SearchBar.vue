@@ -145,7 +145,6 @@ function closeDropdown() {
   gap: 4px;
   padding: 12px 12px 12px 16px;
   cursor: pointer;
-  border-right: 1px solid #eee;
   position: relative;
 }
 

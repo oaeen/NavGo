@@ -65,6 +65,42 @@ function normalizeUrl(input: string): string {
   return normalized
 }
 
+/**
+ * 生成文字图标作为兜底
+ * 使用网站名称的第一个字符生成圆形彩色图标
+ * 使用 2x 分辨率绘制以获得更好的抗锯齿效果
+ */
+function generateTextIcon(siteName: string): string {
+  const firstChar = siteName.trim().charAt(0).toUpperCase()
+
+  // 使用 2x 分辨率以获得更清晰的边缘
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+
+  // 启用抗锯齿
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+
+  // 基于字符生成稳定的背景色，绘制圆形
+  const hue = firstChar.charCodeAt(0) % 360
+  ctx.fillStyle = `hsl(${hue}, 60%, 60%)`
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 白色文字
+  ctx.fillStyle = '#fff'
+  ctx.font = `bold ${size / 2}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(firstChar, size / 2, size / 2)
+
+  return canvas.toDataURL('image/png')
+}
+
 async function fetchIcon() {
   if (!url.value) return
 
@@ -99,9 +135,15 @@ async function fetchIcon() {
 
     if (iconBase64) {
       icon.value = iconBase64
+    } else if (name.value) {
+      // 兜底：使用文字图标
+      icon.value = generateTextIcon(name.value)
     }
   } catch {
-    // 获取失败
+    // 获取失败，使用文字图标兜底
+    if (name.value) {
+      icon.value = generateTextIcon(name.value)
+    }
   } finally {
     isFetchingIcon.value = false
   }
@@ -115,8 +157,8 @@ async function fetchIcon() {
  * 1. 网站 HTML 中声明的高清图标 (apple-touch-icon, 大尺寸 icon)
  * 2. manifest.json 中的图标
  * 3. 常见路径探测 (/apple-touch-icon.png 等)
- * 4. 第三方服务 (Clearbit, icon.horse, DuckDuckGo)
- * 5. Google Favicon 服务
+ * 4. Google Favicon 服务
+ * 5. 文字图标兜底（使用网站名称首字符）
  */
 async function fetchSiteInfo() {
   if (!url.value) return
@@ -182,6 +224,11 @@ async function fetchSiteInfo() {
     } catch {}
   }
 
+  // 兜底：如果还是没有图标，使用文字图标
+  if (!icon.value && name.value) {
+    icon.value = generateTextIcon(name.value)
+  }
+
   isFetchingInfo.value = false
 }
 
@@ -224,8 +271,8 @@ function handleClose() {
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="modal-overlay" @click="handleClose">
-      <div class="modal" @click.stop>
+    <div v-if="visible" class="modal-overlay">
+      <div class="modal">
         <div class="modal-header">
           <h3>{{ title }}</h3>
           <button class="close-btn" @click="handleClose">
@@ -400,6 +447,9 @@ function handleClose() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* 使用 mask 实现平滑圆形裁剪 */
+  -webkit-mask-image: radial-gradient(circle, #fff 100%, transparent 100%);
+  mask-image: radial-gradient(circle, #fff 100%, transparent 100%);
 }
 
 .icon-preview img {

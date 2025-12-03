@@ -166,12 +166,10 @@ function resolveUrl(href, origin, pathname) {
 }
 
 /**
- * 获取高清图标 - 多源尝试
- * 优先级：网站自有图标 > 常见路径 > 第三方服务
+ * 获取高清图标 - 简化版
+ * 优先级：常见路径 > favicon.ico
  */
 async function fetchHighResIcon(domain, url) {
-  // 清理 domain
-  const cleanDomain = domain.replace(/^www\./, '')
   const origin = url ? new URL(url).origin : `https://${domain}`
 
   // 阶段1：尝试常见的高清图标路径
@@ -182,11 +180,7 @@ async function fetchHighResIcon(domain, url) {
     '/apple-touch-icon-152x152.png',
     '/favicon-192x192.png',
     '/favicon-128x128.png',
-    '/favicon-96x96.png',
-    '/icon-192x192.png',
-    '/icons/icon-192x192.png',
-    '/images/favicon.png',
-    '/assets/favicon.png'
+    '/favicon-96x96.png'
   ]
 
   for (const path of commonPaths) {
@@ -195,26 +189,7 @@ async function fetchHighResIcon(domain, url) {
     if (result) return result
   }
 
-  // 阶段2：尝试第三方图标服务
-  const iconServices = [
-    // Clearbit Logo - 高清公司 logo (200px)
-    `https://logo.clearbit.com/${cleanDomain}`,
-    // icon.horse - 专业 favicon 服务
-    `https://icon.horse/icon/${cleanDomain}`,
-    // DuckDuckGo Icons - 备选服务
-    `https://icons.duckduckgo.com/ip3/${cleanDomain}.ico`,
-    // Favicon.im
-    `https://favicon.im/${cleanDomain}?larger=true`,
-    // Google Favicon - 最后备选 (最高 128px)
-    `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=128`
-  ]
-
-  for (const iconUrl of iconServices) {
-    const result = await tryFetchIcon(iconUrl, 32)
-    if (result) return result
-  }
-
-  // 阶段3：尝试网站根目录的 favicon.ico
+  // 阶段2：尝试网站根目录的 favicon.ico
   const faviconResult = await tryFetchIcon(`${origin}/favicon.ico`, 16)
   if (faviconResult) return faviconResult
 

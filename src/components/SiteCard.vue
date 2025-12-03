@@ -131,16 +131,18 @@ function handleClick(event: MouseEvent) {
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
   >
-    <div class="icon-wrapper" :style="iconStyle">
-      <img
-        v-if="iconUrl"
-        :src="iconUrl"
-        :alt="site.name"
-        class="site-icon"
-        @error="handleIconError"
-      />
-      <div v-else class="icon-placeholder" :style="placeholderStyle">
-        {{ initial }}
+    <div class="icon-container" :style="iconStyle">
+      <div class="icon-wrapper">
+        <img
+          v-if="iconUrl"
+          :src="iconUrl"
+          :alt="site.name"
+          class="site-icon"
+          @error="handleIconError"
+        />
+        <div v-else class="icon-placeholder" :style="placeholderStyle">
+          {{ initial }}
+        </div>
       </div>
     </div>
     <span class="site-name" :style="nameStyle">{{ site.name }}</span>
@@ -200,15 +202,22 @@ function handleClick(event: MouseEvent) {
   cursor: grabbing;
 }
 
-.icon-wrapper {
+.icon-container {
   border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
   overflow: hidden;
+}
+
+.icon-wrapper {
+  width: 100%;
+  height: 100%;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle, #fff 100%, transparent 100%);
+  mask-image: radial-gradient(circle, #fff 100%, transparent 100%);
 }
 
 .site-icon {
