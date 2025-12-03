@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { Site, AppConfig } from '@/types'
+import type { Site, AppConfig, CustomSearchEngine, SearchEngineKey } from '@/types'
 import { DEFAULT_CONFIG } from '@/types'
 import { useStorage } from '@/composables/useStorage'
 import { useWallpaper } from '@/composables/useWallpaper'
@@ -91,8 +91,13 @@ async function handleSaveSite(siteData: { id?: string; name: string; url: string
 }
 
 // 设置相关
-async function handleChangeEngine(engine: 'google' | 'baidu' | 'bing') {
+async function handleChangeEngine(engine: SearchEngineKey) {
   config.value.searchEngine = engine
+  await setConfig(config.value)
+}
+
+async function handleUpdateCustomSearchEngine(customEngine: CustomSearchEngine | null) {
+  config.value.customSearchEngine = customEngine
   await setConfig(config.value)
 }
 
@@ -147,6 +152,7 @@ onMounted(() => {
       <!-- 搜索栏 -->
       <SearchBar
         :search-engine="config.searchEngine"
+        :custom-search-engine="config.customSearchEngine"
         @change-engine="handleChangeEngine"
       />
 
@@ -181,6 +187,7 @@ onMounted(() => {
       @import="handleImport"
       @update:show-add-button="handleUpdateShowAddButton"
       @update:icon-size="handleUpdateIconSize"
+      @update:custom-search-engine="handleUpdateCustomSearchEngine"
     />
 
   </div>
