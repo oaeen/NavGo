@@ -68,7 +68,7 @@ export const SEARCH_ENGINES = {
   perplexity: {
     name: 'Perplexity',
     url: 'https://www.perplexity.ai/search?q=',
-    icon: 'https://www.perplexity.ai/favicon.ico'
+    icon: 'https://www.google.com/s2/favicons?domain=perplexity.ai&sz=64'
   },
   google: {
     name: 'Google',
