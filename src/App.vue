@@ -12,6 +12,7 @@ import SettingsPanel from '@/components/SettingsPanel.vue'
 
 const { getSites, setSites, getConfig, setConfig } = useStorage()
 const { wallpaperStyle, setWallpaper, clearWallpaper, loadWallpaper } = useWallpaper()
+import { fetchBestIcon } from '@/utils/favicon'
 
 const sites = ref<Site[]>([])
 const config = ref<AppConfig>({ ...DEFAULT_CONFIG })
@@ -30,8 +31,33 @@ async function loadData() {
     sites.value = await getSites()
     config.value = await getConfig()
     await loadWallpaper()
+    
+    // 后台尝试修复缺失的图标
+    updateMissingIcons()
   } finally {
     isLoading.value = false
+  }
+}
+
+async function updateMissingIcons() {
+  const sitesToUpdate = sites.value.filter(s => !s.icon)
+  if (sitesToUpdate.length === 0) return
+
+  let hasUpdates = false
+  for (const site of sitesToUpdate) {
+    try {
+      const icon = await fetchBestIcon(site.url)
+      if (icon) {
+        site.icon = icon
+        hasUpdates = true
+      }
+    } catch (e) {
+      console.error(`Failed to update icon for ${site.url}`, e)
+    }
+  }
+
+  if (hasUpdates) {
+    await setSites(sites.value)
   }
 }
 

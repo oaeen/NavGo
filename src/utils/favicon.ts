@@ -133,3 +133,44 @@ export async function fetchFaviconAsBase64(url: string): Promise<string | null> 
 
   return null
 }
+
+/**
+ * 综合获取最佳图标
+ * 按优先级尝试：
+ * 1. 网站 HTML 中声明的高清图标
+ * 2. manifest.json 中的图标
+ * 3. 常见路径探测
+ * 4. Google Favicon 服务 (转 Base64)
+ * 5. 文字图标兜底 (可选，由调用方处理)
+ */
+export async function fetchBestIcon(url: string, normalize = true): Promise<string | null> {
+  if (!url) return null
+
+  try {
+    const targetUrl = normalize ? (url.startsWith('http') ? url : `https://${url}`) : url
+    const domain = new URL(targetUrl).hostname
+
+    // 第一步：获取网站信息以解析图标链接
+    const siteInfo = await fetchSiteInfoViaBackground(targetUrl)
+
+    // 优先使用从 HTML 解析的图标信息
+    if (siteInfo.icons && siteInfo.icons.length > 0) {
+      const iconBase64 = await fetchIconWithParsedInfoViaBackground(
+        siteInfo.icons,
+        domain,
+        targetUrl
+      )
+      if (iconBase64) return iconBase64
+    }
+
+    // 备选：直接获取高清图标
+    const highResIcon = await fetchHighResIconViaBackground(domain, targetUrl)
+    if (highResIcon) return highResIcon
+
+    // 最后备选：Google Favicon
+    return await fetchFaviconAsBase64(targetUrl)
+  } catch (e) {
+    console.warn('[NavGo] Failed to fetch best icon:', e)
+    return null
+  }
+}
