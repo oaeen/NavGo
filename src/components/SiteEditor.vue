@@ -8,7 +8,7 @@ import {
   fetchIconWithParsedInfoViaBackground,
   fetchHighResIconViaBackground
 } from '@/utils/favicon'
-import { compressImage } from '@/utils/image'
+import ImageCropper from './ImageCropper.vue'
 
 const props = defineProps<{
   site?: Site | null
@@ -25,6 +25,10 @@ const url = ref('')
 const icon = ref<string | null>(null)
 const isFetchingIcon = ref(false)
 const isFetchingInfo = ref(false)
+
+// 裁剪相关状态
+const showCropper = ref(false)
+const cropperImageSource = ref('')
 
 const isEdit = computed(() => !!props.site)
 const title = computed(() => isEdit.value ? '编辑网站' : '添加网站')
@@ -237,14 +241,24 @@ async function handleFileUpload(e: Event) {
   const file = input.files?.[0]
   if (!file) return
 
-  try {
-    const compressed = await compressImage(file, 128)
-    icon.value = compressed
-  } catch (err) {
-    console.error('Failed to process image:', err)
-  }
+  // 创建临时 URL 用于裁剪
+  cropperImageSource.value = URL.createObjectURL(file)
+  showCropper.value = true
 
   input.value = ''
+}
+
+function handleCropConfirm(base64: string) {
+  icon.value = base64
+  closeCropper()
+}
+
+function closeCropper() {
+  showCropper.value = false
+  if (cropperImageSource.value) {
+    URL.revokeObjectURL(cropperImageSource.value)
+    cropperImageSource.value = ''
+  }
 }
 
 function clearIcon() {
@@ -361,6 +375,14 @@ function handleClose() {
       </div>
     </div>
   </Teleport>
+
+  <!-- 图片裁剪弹窗 -->
+  <ImageCropper
+    :visible="showCropper"
+    :image-source="cropperImageSource"
+    @close="closeCropper"
+    @confirm="handleCropConfirm"
+  />
 </template>
 
 <style scoped>
