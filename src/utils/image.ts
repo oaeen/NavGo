@@ -50,12 +50,11 @@ export async function compressImage(
 
 /**
  * 压缩壁纸图片
+ * 根据屏幕分辨率自适应，保持高清显示
  */
 export async function compressWallpaper(
   file: File,
-  maxWidth: number = 1920,
-  maxHeight: number = 1080,
-  quality: number = 0.85
+  quality: number = 0.99
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
@@ -70,7 +69,16 @@ export async function compressWallpaper(
     img.onload = () => {
       let { width, height } = img
 
-      // 计算缩放比例
+      // 根据屏幕实际分辨率 * devicePixelRatio 计算最大尺寸
+      // 确保在高分屏上也能清晰显示
+      const screenWidth = window.screen.width * window.devicePixelRatio
+      const screenHeight = window.screen.height * window.devicePixelRatio
+
+      // 设置上限，避免超大图片占用过多存储
+      const maxWidth = Math.min(screenWidth, 3840)  // 4K 上限
+      const maxHeight = Math.min(screenHeight, 2160)
+
+      // 只有当图片超过最大尺寸时才缩放
       if (width > maxWidth || height > maxHeight) {
         const ratio = Math.min(maxWidth / width, maxHeight / height)
         width = Math.round(width * ratio)
@@ -80,9 +88,20 @@ export async function compressWallpaper(
       canvas.width = width
       canvas.height = height
 
+      // 启用高质量图像平滑
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+
       ctx.drawImage(img, 0, 0, width, height)
 
-      resolve(canvas.toDataURL('image/jpeg', quality))
+      // 使用 WebP 格式，压缩效果更好且质量更高
+      // 如果浏览器不支持则回退到 JPEG
+      const webpData = canvas.toDataURL('image/webp', quality)
+      if (webpData.startsWith('data:image/webp')) {
+        resolve(webpData)
+      } else {
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
       URL.revokeObjectURL(img.src)
     }
 
