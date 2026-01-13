@@ -20,7 +20,7 @@ const currentEngine = computed(() => {
     return props.customSearchEngine
   }
   const key = props.searchEngine as keyof typeof SEARCH_ENGINES
-  return SEARCH_ENGINES[key] || SEARCH_ENGINES.perplexity
+  return SEARCH_ENGINES[key] || SEARCH_ENGINES.default
 })
 
 const engines = computed(() => {
@@ -34,14 +34,17 @@ const engines = computed(() => {
 function handleSearch() {
   const trimmed = query.value.trim()
   if (trimmed) {
-    let url: string
-    if (props.searchEngine === 'custom' && props.customSearchEngine) {
-      // 自定义搜索引擎使用 {query} 占位符
-      url = props.customSearchEngine.url.replace('{query}', encodeURIComponent(trimmed))
+    if (props.searchEngine === 'default') {
+      if (chrome.search) {
+        chrome.search.query({ text: trimmed, disposition: 'CURRENT_TAB' })
+      } else {
+        window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(trimmed)
+      }
+    } else if (props.searchEngine === 'custom' && props.customSearchEngine) {
+      window.location.href = props.customSearchEngine.url.replace('{query}', encodeURIComponent(trimmed))
     } else {
-      url = currentEngine.value.url + encodeURIComponent(trimmed)
+      window.location.href = currentEngine.value.url + encodeURIComponent(trimmed)
     }
-    window.location.href = url
     emit('search', trimmed)
   }
 }
@@ -63,9 +66,12 @@ function closeDropdown() {
 <template>
   <div class="search-container">
     <div class="search-box">
-      <!-- 搜索引擎选择 -->
       <div class="engine-selector" @click="toggleDropdown">
-        <img :src="currentEngine.icon" :alt="currentEngine.name" class="engine-icon" />
+        <svg v-if="searchEngine === 'default'" class="engine-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <img v-else :src="currentEngine.icon" :alt="currentEngine.name" class="engine-icon" />
         <svg
           class="dropdown-arrow"
           :class="{ open: showEngineDropdown }"
@@ -89,7 +95,11 @@ function closeDropdown() {
               :class="{ active: key === searchEngine }"
               @click.stop="selectEngine(key)"
             >
-              <img :src="engine.icon" :alt="engine.name" />
+              <svg v-if="key === 'default'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <img v-else :src="engine.icon" :alt="engine.name" />
               <span>{{ engine.name }}</span>
             </div>
           </div>

@@ -155,7 +155,7 @@ function handleSaveCustomEngine() {
 function handleDeleteCustomEngine() {
   emit('update:customSearchEngine', null)
   if (props.config.searchEngine === 'custom') {
-    emit('changeEngine', 'perplexity')
+    emit('changeEngine', 'default')
   }
   showCustomEngineForm.value = false
 }
@@ -210,7 +210,8 @@ function handleSelectEngine(key: string) {
           <div v-if="activeTab === 'general'" class="tab-content">
             <!-- 搜索引擎 -->
             <div class="setting-item">
-              <label>默认搜索引擎</label>
+              <label>搜索引擎</label>
+              <p class="description">"默认" 使用您在 Chrome 设置中配置的搜索引擎</p>
               <div class="engine-options">
                 <button
                   v-for="[key, engine] in engines"
@@ -219,7 +220,11 @@ function handleSelectEngine(key: string) {
                   :class="{ active: config.searchEngine === key }"
                   @click="handleSelectEngine(key)"
                 >
-                  <img :src="engine.icon" :alt="engine.name" />
+                  <svg v-if="key === 'default'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <img v-else :src="engine.icon" :alt="engine.name" />
                   <span>{{ engine.name }}</span>
                 </button>
                 <!-- 自定义搜索引擎 -->

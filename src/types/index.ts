@@ -20,7 +20,7 @@ export interface CustomSearchEngine {
 
 export interface AppConfig {
   wallpaper: string | null
-  searchEngine: 'google' | 'baidu' | 'perplexity' | 'custom'
+  searchEngine: 'default' | 'google' | 'baidu' | 'perplexity' | 'custom'
   customSearchEngine: CustomSearchEngine | null
   showAddButton: boolean
   iconSize: number // 无级调节，范围 56-132
@@ -44,7 +44,7 @@ export interface ExportSite {
 // 导出数据中的应用配置（wallpaper 为文件路径而非 Base64）
 export interface ExportConfig {
   wallpaper: string | null  // 导出时为路径如 "wallpaper.jpg"
-  searchEngine: 'google' | 'baidu' | 'perplexity' | 'custom'
+  searchEngine: 'default' | 'google' | 'baidu' | 'perplexity' | 'custom'
   customSearchEngine: CustomSearchEngine | null
   showAddButton: boolean
   iconSize: number // 无级调节，范围 56-132
@@ -58,13 +58,18 @@ export interface ExportData {
 
 export const DEFAULT_CONFIG: AppConfig = {
   wallpaper: null,
-  searchEngine: 'perplexity',
+  searchEngine: 'default',
   customSearchEngine: null,
   showAddButton: true,
   iconSize: ICON_SIZE_DEFAULT
 }
 
 export const SEARCH_ENGINES = {
+  default: {
+    name: '默认',
+    url: '',
+    icon: ''
+  },
   perplexity: {
     name: 'Perplexity',
     url: 'https://www.perplexity.ai/search?q=',
